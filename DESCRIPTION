@@ -1,0 +1,12 @@
+Package: preHandler
+Type: Package
+Title: turn cel data to exprs data
+Version: 1.0
+Author: lifei
+Maintainer: The package maintainer <yourself@somewhere.net>
+Description: turn cel data to exprs data
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+Date: 2017-06-11
+Depends: simpleaffy,affyPLM,RColorBrewer,affy,CLL,affycoretools,tcltk,annotate,base,caret,annotate,org.Hs.eg.db,WGCNA,nnet
