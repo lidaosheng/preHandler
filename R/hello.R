@@ -345,7 +345,9 @@ splitDataset<-function(eset,label){
 }
 #返回训练好的神经网络
 trainModelNN<-function(eset,label,model){
-  ifelse(is.na(dim(eset)),{maxs<-max(eset);mins<-min(eset)},{maxs<-apply(eset,2,max);mins<-apply(eset,2,min)})
+  eset<- as.data.frame(eset)
+  maxs<-apply(eset,2,max)
+  mins<-apply(eset,2,min)
   data<-as.data.frame(scale(eset,center=mins,scale=maxs-mins))
   rm(eset,mins,maxs)
   data_n<-data[which(label==0),]
@@ -380,6 +382,7 @@ trainModelNN<-function(eset,label,model){
   return(nn)
 }
 testModel<-function(eset,label,model){
+
   maxs<-apply(eset,2,max)
   mins<-apply(eset,2,min)
   data<-as.data.frame(scale(eset,center=mins,scale=maxs-mins))
