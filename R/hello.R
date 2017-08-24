@@ -381,6 +381,49 @@ trainModelNN<-function(eset,label,model){
   print(mean(result))
   return(nn)
 }
+
+#返回训练好的神经网络
+trainModelNN2<-function(eset,label,model){
+  eset<-as.data.frame(eset)
+  max<-max(eset)
+  min<-min(eset)
+  data<-sapply(eset,function(x){x<-(x-min)/(max-min)})
+  rm(eset,min,max)
+  data_n<-data[which(label==0),]
+  data_d<-data[which(label==1),]
+  rm(data)
+  result = vector(length=10)
+  for(i in 1:10){
+    ind_n = sample(2,nrow(data_n),replace = TRUE,prob = c(0.7,0.3))
+    ind_d = sample(2,nrow(data_d),replace = TRUE,prob = c(0.7,0.3))
+    trainset_n = data_n[ind_n == 1]
+    testset_n = data_n[ind_n == 2]
+    rm(ind_n)
+    trainset_d = data_d[ind_d == 1]
+    testset_d = data_d[ind_d == 2]
+    rm(ind_d)
+    trainset = c(trainset_n,trainset_d)
+    testset = c(testset_n,testset_d)
+    train_label = as.factor(c(rep(0,length(trainset_n)),rep(1,length(trainset_d))))
+    test_label = as.factor(c(rep(0,length(testset_n)),rep(1,length(testset_d))))
+    rm(trainset_d,trainset_n,testset_d,testset_n)
+    trainset = cbind(trainset,label=train_label)
+    print(dim(trainset))
+    testset = cbind(testset,label=test_label)
+    print(dim(testset))
+    rm(test_label,train_label)
+    #训练网络
+    nn = nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200)
+    predict = predict(nn,testset,type = "class")
+    nn.table = table(testset$label,predict)
+    result[i] = confusionMatrix(nn.table)$overall[[1]]
+  }
+  print("十折交叉验证准确率：")
+  print(mean(result))
+  return(nn)
+}
+
+
 testModel<-function(eset,label,model){
 
   maxs<-apply(eset,2,max)
@@ -424,11 +467,12 @@ relateMT<-function(eset,moduleColors,label){
   return(moduleTraitCor)
 
 }
-test<-function(module){
-  str1<-paste("C:/Users/17878/Desktop/20170814/网络/",module,".csv",sep = "")
-  m<-csvToEset(str1)
-  m<-as.character(m$name)
-  m_nn<-trainModel(eset[,m],label,NULL)
+#m是字符向量
+test<-function(m){
+  #str1<-paste("C:/Users/17878/Desktop/20170814/网络/",module,".csv",sep = "")
+  #m<-csvToEset(str1)
+  #m<-as.character(m$name)
+  m_nn<-trainModelNN(eset[,m],label,NULL)
   print("gse6710:")
   print(testModel(eset6710[,m],label6710,m_nn))
   print("gse14905:")
