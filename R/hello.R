@@ -79,6 +79,7 @@ reduceGeneNum<-function(eset){
   return(eset)
 }
 
+
 removeOutliers<-function(eset,label){
   sampleTree<-hclust(dist(eset),method="average")
   sizeGrWindow(12,9)
@@ -316,6 +317,33 @@ trainData<-function(eset,label){
   print(table(actual=data3$label,predicted=predict(tran_model,newdata = data3,type = "class")))
   return(tran_model)
 }
+
+#去冗余，每次去掉一个最差的特征
+chooseFeatureRF<-function(eset,label,importances){
+  genes = rownames(importances)
+  removed<-names(importances[which(importances==min(importances)),])
+  genes_new = setdiff(genes,removed)
+  while(isStop){
+
+  }
+  rf = trainData(eset[,genes_new],label)
+
+
+}
+chooseFeatureNN<-function(eset,label,importances){
+  mtry<- "y"
+  importances<-importances[,]
+  while(mtry=="y"){
+    genes = names(importances)
+    test(genes)
+    print("continue to remove the worst feature(y,n)?")
+    print(importances)
+    mtry<-scan("",what = character(0),nlines = 1)
+    removed<-names(importances[which(importances==min(importances))])
+    genes = setdiff(genes,removed)
+    importances<-importances[genes]
+  }
+}
 #分层抽样划分训练集和测试集,0表示control组，1表示实验组
 splitDataset<-function(eset,label){
   data_n<-eset[which(label==0),]
@@ -382,7 +410,7 @@ trainModelNN<-function(eset,label,model){
   return(nn)
 }
 
-#返回训练好的神经网络
+#返回训练好的神经网络，针对单特征
 trainModelNN2<-function(eset,label,model){
   eset<-as.data.frame(eset)
   max<-max(eset)
@@ -469,9 +497,6 @@ relateMT<-function(eset,moduleColors,label){
 }
 #m是字符向量
 test<-function(m){
-  #str1<-paste("C:/Users/17878/Desktop/20170814/网络/",module,".csv",sep = "")
-  #m<-csvToEset(str1)
-  #m<-as.character(m$name)
   m_nn<-trainModelNN(eset[,m],label,NULL)
   print("gse6710:")
   print(testModel(eset6710[,m],label6710,m_nn))
