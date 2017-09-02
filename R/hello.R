@@ -331,18 +331,30 @@ chooseFeatureRF<-function(eset,label,importances){
 
 }
 chooseFeatureNN<-function(eset,label,importances){
-  mtry<- "y"
   importances<-importances[,]
-  while(mtry=="y"){
+  s_6710 = c()
+  s_13355 = c()
+  s_14905 = c()
+  s_30999 = c()
+  s_41662 = c()
+
+  while(length(importances)>1){
     genes = names(importances)
-    test(genes)
-    print("continue to remove the worst feature(y,n)?")
-    print(importances)
+    list1 = test(genes)
+    result1 = list1$result
+    s_6710 = c(s_6710,result1[1])
+    s_14905 = c(s_14905,result1[2])
+    s_30999 = c(s_30999,result1[3])
+    s_41662 = c(s_41662,result1[4])
+
+    #print("continue to remove the worst feature(y,n)?")
+    #print(importances)
     mtry<-scan("",what = character(0),nlines = 1)
     removed<-names(importances[which(importances==min(importances))])
     genes = setdiff(genes,removed)
     importances<-importances[genes]
   }
+  result<-list(s6710=s_6710,s13355=s_13355,s14905=s_14905,s30999=s_30999,s41662=s_41662)
 }
 #分层抽样划分训练集和测试集,0表示control组，1表示实验组
 splitDataset<-function(eset,label){
@@ -499,12 +511,14 @@ relateMT<-function(eset,moduleColors,label){
 test<-function(m){
   m_nn<-trainModelNN(eset[,m],label,NULL)
   print("gse6710:")
-  print(testModel(eset6710[,m],label6710,m_nn))
+  s6710 = testModel(eset6710[,m],label6710,m_nn)
   print("gse14905:")
-  print(testModel(eset14905t[,m],label14905t,m_nn))
+  s14905 = testModel(eset14905t[,m],label14905t,m_nn)
   print("gse30999:")
-  print(testModel(eset30999[,m],label30999,m_nn))
+  s30999 = testModel(eset30999[,m],label30999,m_nn)
   print("gse41662:")
-  print(testModel(eset41662[,m],label41662,m_nn))
-  return(m_nn)
+  s41662 = testModel(eset41662[,m],label41662,m_nn)
+  result<-c(s_6710=s6710,s_14905=s14905,s_30999=s30999,s_41662=s41662)
+  list1<-list(result=result,nn=m_nn)
+  return(list1)
 }
