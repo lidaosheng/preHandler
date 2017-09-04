@@ -318,44 +318,7 @@ trainData<-function(eset,label){
   return(tran_model)
 }
 
-#去冗余，每次去掉一个最差的特征
-chooseFeatureRF<-function(eset,label,importances){
-  genes = rownames(importances)
-  removed<-names(importances[which(importances==min(importances)),])
-  genes_new = setdiff(genes,removed)
-  while(isStop){
 
-  }
-  rf = trainData(eset[,genes_new],label)
-
-
-}
-chooseFeatureNN<-function(eset,label,importances){
-  importances<-importances[,]
-  s_6710 = c()
-  s_13355 = c()
-  s_14905 = c()
-  s_30999 = c()
-  s_41662 = c()
-
-  while(length(importances)>1){
-    genes = names(importances)
-    list1 = test(genes)
-    result1 = list1$result
-    s_6710 = c(s_6710,result1[1])
-    s_14905 = c(s_14905,result1[2])
-    s_30999 = c(s_30999,result1[3])
-    s_41662 = c(s_41662,result1[4])
-
-    #print("continue to remove the worst feature(y,n)?")
-    #print(importances)
-    mtry<-scan("",what = character(0),nlines = 1)
-    removed<-names(importances[which(importances==min(importances))])
-    genes = setdiff(genes,removed)
-    importances<-importances[genes]
-  }
-  result<-list(s6710=s_6710,s13355=s_13355,s14905=s_14905,s30999=s_30999,s41662=s_41662)
-}
 #分层抽样划分训练集和测试集,0表示control组，1表示实验组
 splitDataset<-function(eset,label){
   data_n<-eset[which(label==0),]
@@ -383,7 +346,7 @@ splitDataset<-function(eset,label){
   rm(test_label,train_label)
   data<-list(trainset=trainset,testset=testset)
 }
-#返回训练好的神经网络
+#返回训练好的神经网络（实际是最后一折的）,以及十折交叉验证准确率
 trainModelNN<-function(eset,label,model){
   eset<- as.data.frame(eset)
   maxs<-apply(eset,2,max)
@@ -419,7 +382,8 @@ trainModelNN<-function(eset,label,model){
   }
   print("十折交叉验证准确率：")
   print(mean(result))
-  return(nn)
+  list1<-list(result=mean(result),nn=nn)
+  return(list1)
 }
 
 #返回训练好的神经网络，针对单特征
@@ -509,16 +473,66 @@ relateMT<-function(eset,moduleColors,label){
 }
 #m是字符向量
 test<-function(m){
-  m_nn<-trainModelNN(eset[,m],label,NULL)
+  list1<-trainModelNN(eset[,m],label,NULL)
+  m_nn<-list1$nn
+  result1<-list1$result
   print("gse6710:")
   s6710 = testModel(eset6710[,m],label6710,m_nn)
+  print("gse13355:")
+  s13355 = result1
   print("gse14905:")
   s14905 = testModel(eset14905t[,m],label14905t,m_nn)
   print("gse30999:")
   s30999 = testModel(eset30999[,m],label30999,m_nn)
   print("gse41662:")
   s41662 = testModel(eset41662[,m],label41662,m_nn)
-  result<-c(s_6710=s6710,s_14905=s14905,s_30999=s30999,s_41662=s41662)
+  result<-c(s_6710=s6710,s_13355=s13355,s_14905=s14905,s_30999=s30999,s_41662=s41662)
   list1<-list(result=result,nn=m_nn)
   return(list1)
+}
+
+#去冗余，每次去掉一个最差的特征
+chooseFeatureRF<-function(eset,label,attrs){
+
+  genes = rownames(importances)
+  removed<-names(importances[which(importances==min(importances)),])
+  genes_new = setdiff(genes,removed)
+  while(isStop){
+
+  }
+  rf = trainData(eset[,genes_new],label)
+
+
+}
+
+#去冗余,一次随机森林得到的重要度表
+chooseFeatureNN<-function(eset,label,importances){
+  importances<-importances[,]
+  #importance_list = NULL
+  s_6710 = c()
+  s_13355 = c()
+  s_14905 = c()
+  s_30999 = c()
+  s_41662 = c()
+  #目前一个特征做随机森林会报错，后面解决
+  while(length(importances)>1){
+    genes = names(importances)
+    list1 = test(genes)
+    result1 = list1$result #当前基因集合在各个数据集上的预测结果
+    s_6710 = c(s_6710,result1[1]) #将本集合结果添加到新行
+    s_13355 = c(s_13355,result1[2])
+    s_14905 = c(s_14905,result1[3])
+    s_30999 = c(s_30999,result1[4])
+    s_41662 = c(s_41662,result1[5])
+
+    #print("continue to remove the worst feature(y,n)?")
+    #print(importances)
+    #mtry<-scan("",what = character(0),nlines = 1)
+    #获取重要程度最低的基因
+    removed<-names(importances[which(importances==min(importances))])
+    genes = setdiff(genes,removed)
+    #去掉重要程度最低的基因，并更新importance列表
+    importances<-importances[genes]
+  }
+  result<-list(s6710=s_6710,s13355=s_13355,s14905=s_14905,s30999=s_30999,s41662=s_41662)
 }
