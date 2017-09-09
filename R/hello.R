@@ -79,7 +79,7 @@ reduceGeneNum<-function(eset){
   return(eset)
 }
 
-
+#remove the outliers and return the remain samples and labels
 removeOutliers<-function(eset,label){
   sampleTree<-hclust(dist(eset),method="average")
   sizeGrWindow(12,9)
@@ -340,9 +340,6 @@ splitDataset<-function(eset,label){
   print(dim(trainset))
   trainset = cbind(trainset,label=train_label)
   testset = cbind(testset,label=test_label)
-  print(trainset[,1339])
-  print("train_label-----------------------------------")
-  print(train_label)
   rm(test_label,train_label)
   data<-list(trainset=trainset,testset=testset)
 }
@@ -489,6 +486,18 @@ test<-function(m){
   result<-c(s_6710=s6710,s_13355=s13355,s_14905=s14905,s_30999=s30999,s_41662=s41662)
   list1<-list(result=result,nn=m_nn)
   return(list1)
+}
+#路径以目标文件夹加/结尾
+test2<-function(fileDir,eset,label){
+  files<-list.files(fileDir)
+  #获取所有文件的路径
+  str1<-paste(fileDir,files,sep="")
+  result1<-sapply(str1,function(x){m<-csvToEset(x);m<-as.character(m$name);list1<-trainModelNN(eset[,m],label,NULL);list1$result})
+  return(result1)
+}
+
+testFeature<-function(features,datasets){
+  result = testModel(datasets[1][,features],label[1],nn)
 }
 
 #去冗余，每次去掉一个最差的特征
