@@ -1,6 +1,34 @@
 hello <- function() {
   print("Hello, world!")
 }
+#将探针转换成基因名,行基因，列样本.后面三个参数是注释文件
+probToGene<-function(eset,transfer,p_name,g_name){
+  #将探针(行标)，添加一列到eset
+  eset<-cbind(eset,prob=rownames(eset))
+  eset2<-left_join(eset,transfer,by=c("prob"=p_name))
+  #去掉没有对应基因的探针
+  eset2<-subset(set2,!is.na(set2[g_name]))
+  #统计每个基因名出现次数
+  result<-table(eset2[g_name])
+  #获取重复基因名
+  dup<-names(which(result>1))
+  #基因的表达值合并后
+  value<-apply(dup,function(x){
+    #获取重复值为x的所有行
+    set<-subset(eset2,eset2[g_name]==x)
+    #除了倒数两列，把其余行累加到第一行
+    set[1,-c(-1,-2)] <- colSums(set[,-c(-1,-2)])
+    #将eset中x的行都删掉，然后将set第一行补上去
+    sum<-colSums(set)
+    which()
+    sum()
+
+  })
+
+
+
+
+}
 celToExprs<-function(fileDir){
   # filters <- matrix(c("CEL file", ".[Cc][Ee][Ll]", "All", ".*"), ncol = 2, byrow = T)
   # cel.files <-tk_choose.files(fileDir,caption = "Select CELs", multi = TRUE,filters = filters, index = 1)
@@ -297,13 +325,17 @@ trainData<-function(eset,label){
   #测试???
   data3<-cbind(test_data,label=test_label)
   #参数选择
+  min1<-1000
+  index<-1
   for (i in 1:(ncol(data3)-1)){
     test_model <- randomForest(label~.,data=data2,mtry=i)
     err <- mean(test_model$err)
-    print(err)
+    #print(err)
+    if(err<min1){index=i;min1=err}
   }
-  print("choose a smallest err index:")
-  mtry<-scan("",what = integer(0),nlines = 1)
+  print(paste("the smallest err index:",index," min-err:",min1))
+  #mtry<-scan("",what = integer(0),nlines = 1)
+  mtry<-index
   tran_model <- randomForest(label~.,data=data2,mtry=mtry,ntree=500)
   plot(tran_model)
   print("choose a number of tree:")
@@ -502,14 +534,24 @@ testFeature<-function(features,datasets){
 
 #去冗余，每次去掉一个最差的特征
 chooseFeatureRF<-function(eset,label,attrs){
+  #训练神经网络
 
-  genes = rownames(importances)
-  removed<-names(importances[which(importances==min(importances)),])
-  genes_new = setdiff(genes,removed)
-  while(isStop){
+
+  continue = TRUE
+  while(continue){
+    rf = trainData(eset[,attrs],label)
+    imp = rf$importance
+    importances<-imp[,]
+    attrs = names(importances)
+    removed<-names(importances[which(importances==min(importances))])
+    attrs = setdiff(attrs,removed)
+    print(imp)
+    print("continue to remove lastest important attr?(y/n):")
+    continue<-scan("",what=character(0),nlines=1)
+    continue = (continue=="y")
 
   }
-  rf = trainData(eset[,genes_new],label)
+
 
 
 }
