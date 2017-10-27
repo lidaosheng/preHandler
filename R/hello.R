@@ -3,10 +3,10 @@ hello <- function() {
 }
 #将探针转换成基因名,行基因，列样本.后面三个参数是注释文件
 probToGene<-function(eset=data.frame(),transfer=data.frame(),p_name="",g_name=""){
-  if(all(dim(x)==0)||all(dim(transfer)==0))stop("参数eset,或者transfer为空")
+  if(all(dim(eset)==0)||all(dim(transfer)==0))stop("参数eset,或者transfer为空")
   if(p_name==""||g_name=="")stop("p_name或g_name为空")
   #将探针(行标)，添加一列到eset
-  eset<-cbind(eset,prob=rownames(eset))
+  eset<-cbind(eset,prob=as.character(rownames(eset)))
   eset2<-left_join(eset,transfer,by=c("prob"=p_name))
   rm(eset)
   #去掉没有对应基因的探针
