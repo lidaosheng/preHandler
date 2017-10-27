@@ -2,10 +2,13 @@ hello <- function() {
   print("Hello, world!")
 }
 #将探针转换成基因名,行基因，列样本.后面三个参数是注释文件
-probToGene<-function(eset,transfer,p_name,g_name){
+probToGene<-function(eset=data.frame(),transfer=data.frame(),p_name="",g_name=""){
+  if(all(dim(x)==0)||all(dim(transfer)==0))stop("参数eset,或者transfer为空")
+  if(p_name==""||g_name=="")stop("p_name或g_name为空")
   #将探针(行标)，添加一列到eset
   eset<-cbind(eset,prob=rownames(eset))
   eset2<-left_join(eset,transfer,by=c("prob"=p_name))
+  rm(eset)
   #去掉没有对应基因的探针
   eset2<-subset(set2,!is.na(set2[g_name]))
   #统计每个基因名出现次数
@@ -13,17 +16,17 @@ probToGene<-function(eset,transfer,p_name,g_name){
   #获取重复基因名
   dup<-names(which(result>1))
   #基因的表达值合并后
-  value<-apply(dup,function(x){
+  for(x in dup){
     #获取重复值为x的所有行
     set<-subset(eset2,eset2[g_name]==x)
     #除了倒数两列，把其余行累加到第一行
-    set[1,-c(-1,-2)] <- colSums(set[,-c(-1,-2)])
+    set[1,-c(dim(set)[2]-1,dim(set)[2])] <- colSums(set[,-c(dim(set)[2]-1,dim(set)[2])])/(dim(set)[1])
     #将eset中x的行都删掉，然后将set第一行补上去
-    sum<-colSums(set)
-    which()
-    sum()
-
-  })
+    eset2<-subset(eset2,eset2[g_name]!=x)
+    eset2<-rbind(eset2,set[1,])
+  }
+  rm(x,set,dup,result)
+  return(eset2)
 }
 celToExprs<-function(fileDir){
   # filters <- matrix(c("CEL file", ".[Cc][Ee][Ll]", "All", ".*"), ncol = 2, byrow = T)
@@ -411,46 +414,6 @@ trainModelNN<-function(eset,label,model){
   return(list1)
 }
 
-#返回训练好的神经网络，针对单特征
-trainModelNN2<-function(eset,label,model){
-  eset<-as.data.frame(eset)
-  max<-max(eset)
-  min<-min(eset)
-  data<-sapply(eset,function(x){x<-(x-min)/(max-min)})
-  rm(eset,min,max)
-  data_n<-data[which(label==0),]
-  data_d<-data[which(label==1),]
-  rm(data)
-  result = vector(length=10)
-  for(i in 1:10){
-    ind_n = sample(2,nrow(data_n),replace = TRUE,prob = c(0.7,0.3))
-    ind_d = sample(2,nrow(data_d),replace = TRUE,prob = c(0.7,0.3))
-    trainset_n = data_n[ind_n == 1]
-    testset_n = data_n[ind_n == 2]
-    rm(ind_n)
-    trainset_d = data_d[ind_d == 1]
-    testset_d = data_d[ind_d == 2]
-    rm(ind_d)
-    trainset = c(trainset_n,trainset_d)
-    testset = c(testset_n,testset_d)
-    train_label = as.factor(c(rep(0,length(trainset_n)),rep(1,length(trainset_d))))
-    test_label = as.factor(c(rep(0,length(testset_n)),rep(1,length(testset_d))))
-    rm(trainset_d,trainset_n,testset_d,testset_n)
-    trainset = cbind(trainset,label=train_label)
-    print(dim(trainset))
-    testset = cbind(testset,label=test_label)
-    print(dim(testset))
-    rm(test_label,train_label)
-    #训练网络
-    nn = nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200)
-    predict = predict(nn,testset,type = "class")
-    nn.table = table(testset$label,predict)
-    result[i] = confusionMatrix(nn.table)$overall[[1]]
-  }
-  print("十折交叉验证准确率：")
-  print(mean(result))
-  return(nn)
-}
 
 
 testModel<-function(eset,label,model){
