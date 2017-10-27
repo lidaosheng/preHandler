@@ -426,17 +426,29 @@ trainModelNN2<-function(eset,label,model){
 
 
 testModel<-function(eset,label,model){
-
+  #数据标准化
   maxs<-apply(eset,2,max)
   mins<-apply(eset,2,min)
   data<-as.data.frame(scale(eset,center=mins,scale=maxs-mins))
   rm(eset,mins,maxs)
   label<-as.factor(label)
   data<-cbind(data,label=label)
-  predict = predict(model,data,type = "class")
-  nn.table = table(data$label,predict)
-  result = confusionMatrix(nn.table)$overall[[1]]
-  return(result)
+  #十折交叉验证
+  folds<-createFolds(y=data$label,k=10)
+  #folds是一个list，每一个list里面包含这一份数据集所对应的下标
+  #之后，我们可以写循环进行CV,存到errorrate里面
+  errorrate<-rep(0,10)
+  for(i in 1:10){
+    #每次先选好训练集和测试集
+    train_cv<-data[-folds[[i]],]
+    test_cv<-data[folds[[i]],]
+    #然后训练模型并预测,假设train_cv最后一列是target，前面的列都是features
+    model<-randomForest(x=train_cv[,-(ncol(train_cv)-1)],y=train_cv$y)
+    pred<-predict(model,test_cv)
+    #计算错误率
+    errorrate[i]<-mean(pred==test_cv$y)
+  }
+
 }
 relateMT<-function(eset,moduleColors,label){
   # Define numbers of genes and samples
