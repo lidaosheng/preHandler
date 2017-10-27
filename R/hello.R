@@ -1,34 +1,7 @@
 hello <- function() {
   print("Hello, world!")
 }
-#将探针转换成基因名,行基因，列样本.后面三个参数是注释文件
-probToGene<-function(eset,transfer,p_name,g_name){
-  #将探针(行标)，添加一列到eset
-  eset<-cbind(eset,prob=rownames(eset))
-  eset2<-left_join(eset,transfer,by=c("prob"=p_name))
-  #去掉没有对应基因的探针
-  eset2<-subset(set2,!is.na(set2[g_name]))
-  #统计每个基因名出现次数
-  result<-table(eset2[g_name])
-  #获取重复基因名
-  dup<-names(which(result>1))
-  #基因的表达值合并后
-  value<-apply(dup,function(x){
-    #获取重复值为x的所有行
-    set<-subset(eset2,eset2[g_name]==x)
-    #除了倒数两列，把其余行累加到第一行
-    set[1,-c(-1,-2)] <- colSums(set[,-c(-1,-2)])
-    #将eset中x的行都删掉，然后将set第一行补上去
-    sum<-colSums(set)
-    which()
-    sum()
 
-  })
-
-
-
-
-}
 celToExprs<-function(fileDir){
   # filters <- matrix(c("CEL file", ".[Cc][Ee][Ll]", "All", ".*"), ncol = 2, byrow = T)
   # cel.files <-tk_choose.files(fileDir,caption = "Select CELs", multi = TRUE,filters = filters, index = 1)
