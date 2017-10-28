@@ -382,40 +382,34 @@ splitDataset<-function(eset,label){
   data<-list(trainset=trainset,testset=testset)
 }
 #返回训练好的神经网络（实际是最后一折的）,以及十折交叉验证准确率
-trainModelNN<-function(eset,label,model){
+trainModelNN<-function(eset,label){
   eset<- as.data.frame(eset)
   maxs<-apply(eset,2,max)
   mins<-apply(eset,2,min)
-  data<-as.data.frame(scale(eset,center=mins,scale=maxs-mins))
-  rm(eset,mins,maxs)
-  data_n<-data[which(label==0),]
-  data_d<-data[which(label==1),]
-  rm(data)
+  eset<-as.data.frame(scale(eset,center=mins,scale=maxs-mins))
+  rm(mins,maxs)
+  data<-cbind(eset,label=label)
+  #十次
   result = vector(length=10)
-  for(i in 1:10){
-    ind_n = sample(2,nrow(data_n),replace = TRUE,prob = c(0.7,0.3))
-    ind_d = sample(2,nrow(data_d),replace = TRUE,prob = c(0.7,0.3))
-    trainset_n = data_n[ind_n == 1,]
-    testset_n = data_n[ind_n == 2,]
-    rm(ind_n)
-    trainset_d = data_d[ind_d == 1,]
-    testset_d = data_d[ind_d == 2,]
-    rm(ind_d)
-    trainset = rbind(trainset_n,trainset_d)
-    testset = rbind(testset_n,testset_d)
-    train_label = as.factor(c(rep(0,nrow(trainset_n)),rep(1,nrow(trainset_d))))
-    test_label = as.factor(c(rep(0,nrow(testset_n)),rep(1,nrow(testset_d))))
-    rm(trainset_d,trainset_n,testset_d,testset_n)
-    trainset = cbind(trainset,label=train_label)
-    testset = cbind(testset,label=test_label)
-    rm(test_label,train_label)
-    #训练网络
-    nn = nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200)
-    predict = predict(nn,testset,type = "class")
-    nn.table = table(testset$label,predict)
-    result[i] = confusionMatrix(nn.table)$overall[[1]]
+  for(m in 1:10){
+    #十折交叉
+    folds<-createFolds(y=data$label,k=10)
+    result1 = vector(length=10)
+    for(i in 1:10){
+      #每次先选好训练集和测试集
+      trainset<-data[-folds[[i]],]
+      testset<-data[folds[[i]],]
+      dim(trainset)
+      dim(testset)
+      #训练网络
+      nn = nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200)
+      predict = predict(nn,testset,type = "class")
+      nn.table = table(testset$label,predict)
+      result1[i] = confusionMatrix(nn.table)$overall[[1]]
+    }
+    result[m]=mean(result1)
   }
-  print("十折交叉验证准确率：")
+  print("十次十折交叉验证：")
   print(mean(result))
   list1<-list(result=mean(result),nn=nn)
   return(list1)
