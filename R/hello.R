@@ -1,6 +1,13 @@
 hello <- function() {
   print("Hello, world!")
 }
+#huoqu soft
+getSoft<-function(GPLNumber){
+  gpl<-getGEO(GPLNumber)
+  data<-gpl@dataTable
+  data<-data@table
+  return(data)
+}
 #将探针转换成基因名,行基因，列样本.后面三个参数是注释文件
 probToGene<-function(eset=data.frame(),transfer=data.frame(),p_name="",g_name=""){
   if(all(dim(eset)==0)||all(dim(transfer)==0))stop("参数eset,或者transfer为空")
