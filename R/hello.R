@@ -7,19 +7,12 @@ probToGene<-function(eset=data.frame(),transfer=data.frame(),p_name="",g_name=""
   if(p_name==""||g_name=="")stop("p_name或g_name为空")
   #将探针(行标)，添加一列到eset
   eset<-cbind(eset,prob=as.character(rownames(eset)))
-  print(eset)
   eset2<-left_join(eset,transfer,by=c("prob"=p_name))
-  print("--------------")
-  print(eset2)
-  print("--------------")
   rm(eset)
   #去掉没有对应基因的探针
   eset2<-subset(eset2,!is.na(eset2[g_name]))
-  print(eset2)
-  print("---------------")
   #统计每个基因名出现次数
   result<-table(eset2[g_name])
-  print(result)
   #获取重复基因名
   dup<-names(which(result>1))
   #基因的表达值合并后
