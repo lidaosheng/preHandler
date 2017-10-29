@@ -541,5 +541,7 @@ biomarkerPick<-function(eset,label){
   dissTOM<-buildNetwork(eset)
   moduleColors<-moduleDetect(eset,dissTOM)
   moduleTraitCor<-relateMT(eset,moduleColors,label)
-  #选出相关系数大于0.7的模块
+  index<-which(abs(moduleTraitCor)>0.7)#选出相关系数大于0.7的模块
+
+
 }
