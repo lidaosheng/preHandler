@@ -360,31 +360,6 @@ trainData<-function(eset,label){
   return(tran_model)
 }
 
-
-#分层抽样划分训练集和测试集,0表示control组，1表示实验组
-splitDataset<-function(eset,label){
-  data_n<-eset[which(label==0),]
-  data_d<-eset[which(label==1),]
-  ind_n = sample(2,nrow(data_n),replace = TRUE,prob = c(0.7,0.3))
-  ind_d = sample(2,nrow(data_d),replace = TRUE,prob = c(0.7,0.3))
-  trainset_n = data_n[ind_n == 1,]
-  testset_n = data_n[ind_n == 2,]
-  rm(ind_n)
-  trainset_d = data_d[ind_d == 1,]
-  testset_d = data_d[ind_d == 2,]
-  rm(ind_d)
-  trainset = rbind(trainset_n,trainset_d)
-  testset = rbind(testset_n,testset_d)
-  train_label = c(rep(0,nrow(trainset_n)),rep(1,nrow(trainset_d)))
-  test_label = c(rep(0,nrow(testset_n)),rep(1,nrow(testset_d)))
-
-  rm(trainset_d,trainset_n,testset_d,testset_n)
-  print(dim(trainset))
-  trainset = cbind(trainset,label=train_label)
-  testset = cbind(testset,label=test_label)
-  rm(test_label,train_label)
-  data<-list(trainset=trainset,testset=testset)
-}
 #返回训练好的神经网络（实际是最后一折的）,以及十折交叉验证准确率
 trainModelNN<-function(eset,label){
   eset<- as.data.frame(eset)
@@ -556,4 +531,15 @@ chooseFeatureNN<-function(eset,label,importances){
     importances<-importances[genes]
   }
   result<-list(s6710=s_6710,s13355=s_13355,s14905=s_14905,s30999=s_30999,s41662=s_41662)
+}
+#-----------------------------------------------------------------------------------------
+biomarkerPick<-function(eset,label){
+  eset<-reduceGeneNum(eset)      #保留变异系数前5000的基因
+  el<-removeOutliers(eset,label) #
+  eset<-el$eset
+  label<-el$label
+  dissTOM<-buildNetwork(eset)
+  moduleColors<-moduleDetect(eset,dissTOM)
+  moduleTraitCor<-relateMT(eset,moduleColors,label)
+  #选出相关系数大于0.7的模块
 }
