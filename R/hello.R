@@ -1,8 +1,6 @@
-hello <- function() {
-  print("Hello, world!")
-}
-#huoqu soft
+#获取GPL平台的soft文件
 getSoft<-function(GPLNumber){
+  options(stringsAsFactors=F)
   gpl<-getGEO(GPLNumber)
   data<-gpl@dataTable
   data<-data@table
@@ -13,6 +11,9 @@ probToGene<-function(eset=data.frame(),transfer=data.frame(),p_name="",g_name=""
   if(all(dim(eset)==0)||all(dim(transfer)==0))stop("参数eset,或者transfer为空")
   if(p_name==""||g_name=="")stop("p_name或g_name为空")
   #将探针(行标)，添加一列到eset
+  eset<-as.data.frame(eset)
+  col<-colnames(transfer)
+  transfer<-transfer[,c(which(p_name==col),which(g_name==col))]
   eset<-cbind(eset,prob=as.character(rownames(eset)))
   eset2<-left_join(eset,transfer,by=c("prob"=p_name))
   rm(eset)
@@ -32,7 +33,10 @@ probToGene<-function(eset=data.frame(),transfer=data.frame(),p_name="",g_name=""
     eset2<-subset(eset2,eset2[g_name]!=x)
     eset2<-rbind(eset2,set[1,])
   }
-  rm(x,set,dup,result)
+  rownames(eset2)<-eset2[,g_name]
+  col<-colnames(eset2)
+  eset2<-eset2[,-c(which("prob"==col),which(g_name==col))]
+  rm(x,dup,result)
   return(eset2)
 }
 celToExprs<-function(fileDir){
