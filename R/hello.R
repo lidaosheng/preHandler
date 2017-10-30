@@ -394,33 +394,6 @@ trainModelNN<-function(eset,label){
   return(list1)
 }
 
-
-
-testModel<-function(eset,label,model){
-  #数据标准化
-  maxs<-apply(eset,2,max)
-  mins<-apply(eset,2,min)
-  data<-as.data.frame(scale(eset,center=mins,scale=maxs-mins))
-  rm(eset,mins,maxs)
-  label<-as.factor(label)
-  data<-cbind(data,label=label)
-  #十折交叉验证
-  folds<-createFolds(y=data$label,k=10)
-  #folds是一个list，每一个list里面包含这一份数据集所对应的下标
-  #之后，我们可以写循环进行CV,存到errorrate里面
-  errorrate<-rep(0,10)
-  for(i in 1:10){
-    #每次先选好训练集和测试集
-    train_cv<-data[-folds[[i]],]
-    test_cv<-data[folds[[i]],]
-    #然后训练模型并预测,假设train_cv最后一列是target，前面的列都是features
-    model<-randomForest(x=train_cv[,-(ncol(train_cv)-1)],y=train_cv$y)
-    pred<-predict(model,test_cv)
-    #计算错误率
-    errorrate[i]<-mean(pred==test_cv$y)
-  }
-
-}
 relateMT<-function(eset,moduleColors,label){
   # Define numbers of genes and samples
   nGenes = ncol(eset);
@@ -451,6 +424,64 @@ relateMT<-function(eset,moduleColors,label){
   return(moduleTraitCor)
 
 }
+#选出感兴趣的模块
+chooseModuleByCor<-function(moduleTraitCor,threshold){
+
+}
+#在感兴趣的模块中挑选出首批基因集合用于下一步的特征选择
+getFirstGeneSet<-function(){
+
+}
+
+
+#去冗余，每次去掉一个最差的特征
+chooseFeatureRF<-function(eset,label,attrs){
+  #训练神经网络
+  continue = TRUE
+  while(continue){
+    rf = trainData(eset[,attrs],label)
+    imp = rf$importance
+    importances<-imp[,]
+    attrs = names(importances)
+    removed<-names(importances[which(importances==min(importances))])
+    attrs = setdiff(attrs,removed)
+    print(imp)
+    print("continue to remove lastest important attr?(y/n):")
+    continue<-scan("",what=character(0),nlines=1)
+    continue = (continue=="y")
+  }
+}
+
+
+#-----------------------------------------------------------------------------------------
+#eset是行基因，列样本
+biomarkerPick<-function(eset,label){
+
+  zerovar<-nearZeroVar(t(eset))
+  eset<-t(eset)[,-zerovar]
+  imp<-preProcess(eset,method="knnImpute",k=5)
+  eset<-predict(imp,eset)
+
+  eset<-reduceGeneNum(eset)      #保留变异系数前5000的基因
+  el<-removeOutliers(eset,label) #
+  eset<-el$eset
+  label<-el$label
+
+  dissTOM<-buildNetwork(eset)
+  moduleColors<-moduleDetect(eset,dissTOM)
+  moduleTraitCor<-relateMT(eset,moduleColors,label)
+  index<-which(abs(moduleTraitCor)>0.7)#选出相关系数大于0.7的模块
+  if(length(index)==0){
+    stop("没有相关性大于0.7的模块")
+  }
+  chooseModule<-rownames(moduleTraitCor)[index] #MEpink
+  genes<-getFirstGeneSet(chooseModule) #筛选出第一批基因作为候选基因
+
+}
+#选取0.8到0.9之间的基因
+#------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------
 #m是字符向量
 test<-function(m){
   list1<-trainModelNN(eset[,m],label,NULL)
@@ -482,25 +513,6 @@ test2<-function(fileDir,eset,label){
 testFeature<-function(features,datasets){
   result = testModel(datasets[1][,features],label[1],nn)
 }
-
-#去冗余，每次去掉一个最差的特征
-chooseFeatureRF<-function(eset,label,attrs){
-  #训练神经网络
-  continue = TRUE
-  while(continue){
-    rf = trainData(eset[,attrs],label)
-    imp = rf$importance
-    importances<-imp[,]
-    attrs = names(importances)
-    removed<-names(importances[which(importances==min(importances))])
-    attrs = setdiff(attrs,removed)
-    print(imp)
-    print("continue to remove lastest important attr?(y/n):")
-    continue<-scan("",what=character(0),nlines=1)
-    continue = (continue=="y")
-  }
-}
-
 #去冗余,一次随机森林得到的重要度表
 chooseFeatureNN<-function(eset,label,importances){
   importances<-importances[,]
@@ -531,17 +543,4 @@ chooseFeatureNN<-function(eset,label,importances){
     importances<-importances[genes]
   }
   result<-list(s6710=s_6710,s13355=s_13355,s14905=s_14905,s30999=s_30999,s41662=s_41662)
-}
-#-----------------------------------------------------------------------------------------
-biomarkerPick<-function(eset,label){
-  eset<-reduceGeneNum(eset)      #保留变异系数前5000的基因
-  el<-removeOutliers(eset,label) #
-  eset<-el$eset
-  label<-el$label
-  dissTOM<-buildNetwork(eset)
-  moduleColors<-moduleDetect(eset,dissTOM)
-  moduleTraitCor<-relateMT(eset,moduleColors,label)
-  index<-which(abs(moduleTraitCor)>0.7)#选出相关系数大于0.7的模块
-
-
 }
