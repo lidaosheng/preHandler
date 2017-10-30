@@ -426,10 +426,16 @@ relateMT<-function(eset,moduleColors,label){
 }
 #选出感兴趣的模块
 chooseModuleByCor<-function(moduleTraitCor,threshold){
+  index<-which(abs(moduleTraitCor)>threshold)#选出相关系数大于threshold的模块
+  if(length(index)==0){
+    stop("没有符合条件的模块")
+  }
+  chooseModule<-rownames(moduleTraitCor)[index] #MEpink
 
 }
 #在感兴趣的模块中挑选出首批基因集合用于下一步的特征选择
-getFirstGeneSet<-function(){
+getFirstGeneSet<-function(moduleList){
+
 
 }
 
