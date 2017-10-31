@@ -113,6 +113,7 @@ comGenesEsets<-function(esetList){
 
 }
 reduceGeneNum<-function(eset){
+  if(dim(eset)[2]<5000){return(eset)}
   eset <- eset[,order(apply(eset,2,mad), decreasing = T)[1:5000]]
   return(eset)
 }
@@ -331,14 +332,14 @@ trainData<-function(eset,label){
   tra_data<-data[sample_data==1,]
   test_data<-data[sample_data==2,]
   #训练???
-  data2<-cbind(tra_data,label=tra_label)
+  data2<-cbind(tra_data,label8=tra_label)
   #测试???
-  data3<-cbind(test_data,label=test_label)
+  data3<-cbind(test_data,label8=test_label)
   #参数选择
   min1<-1000
   index<-1
   for (i in 1:(ncol(data3)-1)){
-    test_model <- randomForest(label~.,data=data2,mtry=i)
+    test_model <- randomForest(label8~.,data=data2,mtry=i)
     err <- mean(test_model$err)
     #print(err)
     if(err<min1){index=i;min1=err}
@@ -346,17 +347,17 @@ trainData<-function(eset,label){
   print(paste("the smallest err index:",index," min-err:",min1))
   #mtry<-scan("",what = integer(0),nlines = 1)
   mtry<-index
-  tran_model <- randomForest(label~.,data=data2,mtry=mtry,ntree=500)
+  tran_model <- randomForest(label8~.,data=data2,mtry=mtry,ntree=500)
   plot(tran_model)
   print("choose a number of tree:")
   ntree<-scan("",what = integer(0),nlines = 1)
   abline(v=ntree,col="red")
-  tran_model <- randomForest(label~.,data=data2,mtry=mtry,ntree=ntree)
+  tran_model <- randomForest(label8~.,data=data2,mtry=mtry,ntree=ntree)
   print(tran_model)
   print("------------------测试???-----------------")
   print(length(test_data$label))
   print(dim(data3))
-  print(table(actual=data3$label,predicted=predict(tran_model,newdata = data3,type = "class")))
+  print(table(actual=data3$label8,predicted=predict(tran_model,newdata = data3,type = "class")))
   return(tran_model)
 }
 
@@ -425,16 +426,14 @@ relateMT<-function(eset,moduleColors,label){
 
 }
 #选出感兴趣的模块
-chooseModuleByCor<-function(moduleTraitCor,threshold){
+chooseModuleByCor<-function(moduleTraitCor,threshold=0.7){
   index<-which(abs(moduleTraitCor)>threshold)#选出相关系数大于threshold的模块
-  if(length(index)==0){
-    stop("没有符合条件的模块")
-  }
   chooseModule<-rownames(moduleTraitCor)[index] #MEpink
-
+  return(chooseModule)
 }
 #在感兴趣的模块中挑选出首批基因集合用于下一步的特征选择
 getFirstGeneSet<-function(moduleList){
+
 
 
 }
@@ -462,7 +461,7 @@ chooseFeatureRF<-function(eset,label,attrs){
 #-----------------------------------------------------------------------------------------
 #eset是行基因，列样本
 biomarkerPick<-function(eset,label){
-
+  #去掉低方差，填补缺失值
   zerovar<-nearZeroVar(t(eset))
   eset<-t(eset)[,-zerovar]
   imp<-preProcess(eset,method="knnImpute",k=5)
@@ -476,11 +475,7 @@ biomarkerPick<-function(eset,label){
   dissTOM<-buildNetwork(eset)
   moduleColors<-moduleDetect(eset,dissTOM)
   moduleTraitCor<-relateMT(eset,moduleColors,label)
-  index<-which(abs(moduleTraitCor)>0.7)#选出相关系数大于0.7的模块
-  if(length(index)==0){
-    stop("没有相关性大于0.7的模块")
-  }
-  chooseModule<-rownames(moduleTraitCor)[index] #MEpink
+  chooseModule<-chooseModuleByCor(moduleTraitCor)
   genes<-getFirstGeneSet(chooseModule) #筛选出第一批基因作为候选基因
 
 }
