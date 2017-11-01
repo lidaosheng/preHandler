@@ -364,6 +364,7 @@ trainData<-function(eset,label){
 #返回训练好的神经网络（实际是最后一折的）,以及十折交叉验证准确率
 trainModelNN<-function(eset,label){
   eset<- as.data.frame(eset)
+  label<-as.factor(label)
   maxs<-apply(eset,2,max)
   mins<-apply(eset,2,min)
   eset<-as.data.frame(scale(eset,center=mins,scale=maxs-mins))
@@ -379,13 +380,11 @@ trainModelNN<-function(eset,label){
       #每次先选好训练集和测试集
       trainset<-data[-folds[[i]],]
       testset<-data[folds[[i]],]
-      dim(trainset)
-      dim(testset)
       #训练网络
-      nn = nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200)
-      predict = predict(nn,testset,type = "class")
-      nn.table = table(testset$label,predict)
-      result1[i] = confusionMatrix(nn.table)$overall[[1]]
+      nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200)
+      predict <- predict(nn,testset,type = "class")
+      nt <- table(testset$label,predict)
+      result1[i] <- (nt[1,1]+nt[2,2])/(nt[1,1]+nt[2,2]+nt[1,2]+nt[2,1])
     }
     result[m]=mean(result1)
   }
@@ -544,4 +543,15 @@ chooseFeatureNN<-function(eset,label,importances){
     importances<-importances[genes]
   }
   result<-list(s6710=s_6710,s13355=s_13355,s14905=s_14905,s30999=s_30999,s41662=s_41662)
+}
+
+createConfusionMatrix <- function(act, pred) {
+  # You've mentioned that neither actual nor predicted may give a complete
+  # picture of the available classes, hence:
+  numClasses <- max(act, pred)
+  # Sort predicted and actual as it simplifies what's next. You can make this
+  # faster by storing `order(act)` in a temporary variable.
+  pred <- pred[order(act)]
+  act  <- act[order(act)]
+  sapply(split(pred, act), tabulate, nbins=numClasses)
 }
