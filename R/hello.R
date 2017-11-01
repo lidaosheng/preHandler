@@ -383,17 +383,27 @@ trainModelNN<-function(eset,label){
       #训练网络
       nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200)
       predict <- predict(nn,testset,type = "class")
-      nt <- table(testset$label,predict)
-      result1[i] <- (nt[1,1]+nt[2,2])/(nt[1,1]+nt[2,2]+nt[1,2]+nt[2,1])
+      acc <- getAcc(testset$label,predict)
+      result1[i] <- acc
     }
     result[m]=mean(result1)
   }
   print("十次十折交叉验证：")
   print(mean(result))
   list1<-list(result=mean(result),nn=nn)
-  return(list1)
+  return(folds)
 }
-
+#二分类，获取acc
+getAcc<-function(label,predict){
+  nt <- table(label,predict)
+  acc<-0
+  if(length(colnames(nt))==1){
+    acc<-(table(a,b)[colnames(table(a,b)),colnames(table(a,b))])/length(label)
+    return(acc)
+  }
+  acc <- (nt[1,1]+nt[2,2])/(length(label))
+  return(acc)
+}
 relateMT<-function(eset,moduleColors,label){
   # Define numbers of genes and samples
   nGenes = ncol(eset);
