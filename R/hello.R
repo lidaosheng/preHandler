@@ -1,3 +1,33 @@
+#读取TCGA文件
+readTCGA<-function(path){
+  options(stringsAsFactors=F)
+  folders<-list.files(path)
+  new_fpkm<-data.frame()
+  #整合数据
+  fd1<-folders[1]
+  files_name<-list.files(paste(path,"/",fd1,sep=""))
+  files_name_gz<-files_name[grepl('.FPKM.txt',files_name)]
+  mydata<-read.table(gzfile(paste(path,"/",fd1,"/",files_name_gz,sep="")))
+  #列名
+  names(mydata)<-c("ENSG_ID",fd1)
+  new_fpkm<-mydata
+
+  for(fd in folders[2:length(folders)]){
+    #解压文件
+    files_name<-list.files((paste(path,"/",fd,sep = "")))
+    files_name_gz<-files_name[grepl('.FPKM.txt',files_name)]
+    mydata<-read.table(gzfile(paste(path,"/",files_name_gz,sep = "")))
+    #给出列名
+    names(mydata)<-c("ENSG_ID",fd)
+    #整合到一个数据框
+    new_fpkm<-merge(new_fpkm,mydata,by="ENSG_ID")
+  }
+  #输出
+  write.csv(new_fpkm,"f:/data/output/output.csv",row.names = F)
+
+
+}
+
 #获取GPL平台的soft文件
 getSoft<-function(GPLNumber){
   options(stringsAsFactors=F)
@@ -353,10 +383,6 @@ trainData<-function(eset,label){
   ntree<-scan("",what = integer(0),nlines = 1)
   abline(v=ntree,col="red")
   tran_model <- randomForest(label8~.,data=data2,mtry=mtry,ntree=ntree)
-  print(tran_model)
-  print("------------------测试???-----------------")
-  print(length(test_data$label))
-  print(dim(data3))
   print(table(actual=data3$label8,predicted=predict(tran_model,newdata = data3,type = "class")))
   return(tran_model)
 }
