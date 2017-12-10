@@ -9,4 +9,4 @@ License: What license is it under?
 Encoding: UTF-8
 LazyData: true
 Date: 2017-06-11
-Depends: simpleaffy,affyPLM,RColorBrewer,affy,CLL,tcltk,annotate,base,caret,annotate,org.Hs.eg.db,WGCNA,nnet,dplyr,randomForest
+Depends: simpleaffy,affyPLM,RColorBrewer,affy,CLL,minerva,tcltk,annotate,base,caret,annotate,org.Hs.eg.db,WGCNA,nnet,dplyr,randomForest

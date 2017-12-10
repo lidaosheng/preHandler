@@ -293,7 +293,11 @@ moduleDetect<-function(eset,dissTOM){
   moduleColors = mergedColors
   return(moduleColors)
 }
+#模块去冗余
+moduleER<-function(data,moduleColors,modules){
+  lapply(moduleColors,function(x){genes<-colnames(data)[which(moduleColors==x)]})
 
+}
 
 #calculate the module preservation between two data set
 preservation<-function(eset1,eset2,dynamicColors_p1){
@@ -516,6 +520,58 @@ biomarkerPick<-function(eset,label){
 }
 #选取0.8到0.9之间的基因
 #------------------------------------------------------------------------------------------
+#模块去冗余：互信息
+moduleRedundant<-function(eset,moduleColors,label){
+  micFC = NULL
+
+}
+mcone<-function(eset,label,r){
+  #将所有特征与label的相关性存在micFC中，将相关性高的(>r)的索引记下，存于subset中
+  micFC<-apply(eset,2,function(x){m=mine(x,label);m$MIC})
+  subset<-micFC[micFC>r] #将与label相关性高于r的选出
+  subset<-sort(subset,decreasing = T) #降序排列
+  names1<-names(subset)
+  print("到了这里1")
+  subset<-sapply(names1,function(x){which(colnames(eset)==x)}) #降序后，基因在原eset中的位置索引
+  subset<-as.integer(subset)
+  numSubset = length(subset)
+  e=1
+  while(e<length(subset)){
+    q=e+1
+    while(q<=length(subset)){
+      if(mine(eset[,subset[e]],eset[,subset[q]])$MIC>=micFC[subset[q]])
+        subset=subset[-q]
+      else
+        q=q+1
+    }
+    e=e+1
+  }
+  #return(eset[,subset])
+  return(subset)
+}
+mcone2<-function(eset,label,r){
+  #将所有特征与label的相关性存在micFC中，将相关性高的(>r)的索引记下，存于subset中
+  micFC<-apply(eset,2,function(x){m=cor(x,label)})
+  subset<-micFC[micFC>r] #将与label相关性高于r的选出
+  subset<-sort(subset,decreasing = T) #降序排列
+  names1<-names(subset)
+  subset<-sapply(names1,function(x){which(colnames(eset)==x)}) #降序后，基因在原eset中的位置索引
+  subset<-as.integer(subset)
+  numSubset = length(subset)
+  e=1
+  while(e<length(subset)){
+    q=e+1
+    while(q<=length(subset)){
+      if(cor(eset[,subset[e]],eset[,subset[q]])>=micFC[subset[q]])
+        subset=subset[-q]
+      else
+        q=q+1
+    }
+    e=e+1
+  }
+  #return(eset[,subset])
+  return(subset)
+}
 #------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------
 #m是字符向量
