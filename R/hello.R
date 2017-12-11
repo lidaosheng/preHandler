@@ -549,29 +549,7 @@ mcone<-function(eset,label,r){
   #return(eset[,subset])
   return(subset)
 }
-mcone2<-function(eset,label,r){
-  #将所有特征与label的相关性存在micFC中，将相关性高的(>r)的索引记下，存于subset中
-  micFC<-apply(eset,2,function(x){m=cor(x,label)})
-  subset<-micFC[micFC>r] #将与label相关性高于r的选出
-  subset<-sort(subset,decreasing = T) #降序排列
-  names1<-names(subset)
-  subset<-sapply(names1,function(x){which(colnames(eset)==x)}) #降序后，基因在原eset中的位置索引
-  subset<-as.integer(subset)
-  numSubset = length(subset)
-  e=1
-  while(e<length(subset)){
-    q=e+1
-    while(q<=length(subset)){
-      if(cor(eset[,subset[e]],eset[,subset[q]])>=micFC[subset[q]])
-        subset=subset[-q]
-      else
-        q=q+1
-    }
-    e=e+1
-  }
-  #return(eset[,subset])
-  return(subset)
-}
+
 #------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------
 #m是字符向量
