@@ -428,7 +428,7 @@ getAcc<-function(label,predict){
   nt <- table(label,predict)
   acc<-0
   if(length(colnames(nt))==1){
-    acc<-(table(a,b)[colnames(table(a,b)),colnames(table(a,b))])/length(label)
+    acc<-(table(label,predict)[colnames(table(label,predict)),colnames(table(label,predict))])/length(label)
     return(acc)
   }
   acc <- (nt[1,1]+nt[2,2])/(length(label))
