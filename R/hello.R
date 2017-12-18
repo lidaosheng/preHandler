@@ -258,6 +258,8 @@ moduleDetect<-function(eset,dissTOM){
   minSize<-scan("",what = integer(0),nlines = 1)
   dynamicMods = cutreeDynamic(dendro = geneTree, distM = dissTOM,deepSplit = 2, pamRespectsDendro = FALSE,minClusterSize = minSize)
   dynamicColors = labels2colors(dynamicMods)
+  print(class(dynamicColors))
+
   MElist<-moduleEigengenes(eset,colors=dynamicColors)
   MEs <- MElist$eigengenes
   MEDiss<-1-cor(MEs)
@@ -518,13 +520,8 @@ biomarkerPick<-function(eset,label){
   genes<-getFirstGeneSet(chooseModule) #筛选出第一批基因作为候选基因
 
 }
-#选取0.8到0.9之间的基因
-#------------------------------------------------------------------------------------------
-#模块去冗余：互信息
-moduleRedundant<-function(eset,moduleColors,label){
-  micFC = NULL
-
-}
+#将每个模块中互信息最高的挑选出来合并
+#getFirstSet<-function(eset,moduleColors,)
 mcone<-function(eset,label,r){
   #将所有特征与label的相关性存在micFC中，将相关性高的(>r)的索引记下，存于subset中
   micFC<-apply(eset,2,function(x){m=mine(x,label);m$MIC})
