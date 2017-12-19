@@ -413,7 +413,7 @@ trainModelNN<-function(eset,label){
       trainset<-data[-folds[[i]],]
       testset<-data[folds[[i]],]
       #训练网络
-      nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200)
+      nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200,trace=F)
       predict <- predict(nn,testset,type = "class")
       acc <- getAcc(testset$label,predict)
       result1[i] <- acc
@@ -423,7 +423,7 @@ trainModelNN<-function(eset,label){
   print("十次十折交叉验证：")
   print(mean(result))
   list1<-list(result=mean(result),nn=nn)
-  return(folds)
+  return(list1)
 }
 #二分类，获取acc
 getAcc<-function(label,predict){
@@ -478,7 +478,29 @@ getFirstGeneSet<-function(moduleList){
 
 
 }
+#去冗余，每次去掉一个最差的特征
+removeWF<-function(data,label){
+  data1<-data
+  index<-as.data.frame(c(1:ncol(data1)))
+  list1<-trainModelNN(data1,as.factor(label))
+  acc<-list1$result #去掉特征前的准确率
+  accs<-apply(index,1,function(x){
+    data2<-data1[,-x]
+    list1<-trainModelNN(data2,as.factor(label))
+    return(list1$result)
+  })
+  #得到准确率提升最大的
+  accs<-as.numeric(accs)
+  diff<-1-accs
+  remove_index<-which(acc==max(accs))
+  data1<-data1[,-remove_index]
 
+
+
+
+
+
+}
 
 #去冗余，每次去掉一个最差的特征
 chooseFeatureRF<-function(eset,label,attrs){
