@@ -479,8 +479,10 @@ getFirstGeneSet<-function(moduleList){
 
 }
 #去冗余，每次去掉一个最差的特征
+#终止条件：连续下降3次，或者单次下降5百分点
 removeWF<-function(data,label){
   data1<-data
+  isStop = 0
   index<-as.data.frame(c(1:ncol(data1)))
   list1<-trainModelNN(data1,as.factor(label))
   acc<-list1$result #去掉特征前的准确率
@@ -491,7 +493,18 @@ removeWF<-function(data,label){
   })
   #得到准确率提升最大的
   accs<-as.numeric(accs)
-  diff<-1-accs
+  diff<-accs-acc #去掉每个特征后，性能提升情况
+  if(all(diff<0)){ #性能全部下降
+    if(max(diff)<(-0.05)) #下降最少的也降了5%，终止循环
+      break
+    if(isStop==2)#之前已经下降了两次了，终止循环
+      break
+    else
+      isStop=isStop+1
+  }else{
+    if(isStop!=0)
+      isStop=0
+  }
   remove_index<-which(acc==max(accs))
   data1<-data1[,-remove_index]
 
