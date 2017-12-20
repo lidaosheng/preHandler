@@ -497,7 +497,6 @@ removeWF<-function(data,label,remainNum=2){
   iter_f[1]="--"
   iter_acc[1]=acc
   #-----------------------------------------------------------------
-
   while(len>1){ #如果没有终止，一直迭代到剩下remainNum个特征
     index<-as.data.frame(c(1:ncol(data1))) #1-特征总数，将向量化为数据框
     accs<-apply(index,1,function(x){
@@ -523,7 +522,6 @@ removeWF<-function(data,label,remainNum=2){
     remove_index<-which(accs==max(accs)) #那个去掉后，让整体性能提升最多的特征索引
     print(accs)
     print(remove_index)
-
     #记录
     iter[count+1]<-count
     iter_f[count+1]<-colnames(data1)[remove_index]
@@ -535,27 +533,7 @@ removeWF<-function(data,label,remainNum=2){
   }
   result<-list(iter=iter,iter_f=iter_f,iter_acc=iter_acc)
   return(result)
-
 }
-
-#去冗余，每次去掉一个最差的特征
-chooseFeatureRF<-function(eset,label,attrs){
-  #训练神经网络
-  continue = TRUE
-  while(continue){
-    rf = trainData(eset[,attrs],label)
-    imp = rf$importance
-    importances<-imp[,]
-    attrs = names(importances)
-    removed<-names(importances[which(importances==min(importances))])
-    attrs = setdiff(attrs,removed)
-    print(imp)
-    print("continue to remove lastest important attr?(y/n):")
-    continue<-scan("",what=character(0),nlines=1)
-    continue = (continue=="y")
-  }
-}
-
 
 #-----------------------------------------------------------------------------------------
 #eset是行基因，列样本
@@ -579,7 +557,15 @@ biomarkerPick<-function(eset,label){
 
 }
 #将每个模块中互信息最高的挑选出来合并
-#getFirstSet<-function(eset,moduleColors,)
+getFirstSet<-function(data,moduleColors,r=0.2){
+  moduleNames<-unique(moduleColors)
+  dataList<-sapply(moduleNames,function(x){
+    data1<-data[,which(moduleColors==x)]
+  })
+
+
+
+}
 mcone<-function(eset,label,r){
   #将所有特征与label的相关性存在micFC中，将相关性高的(>r)的索引记下，存于subset中
   micFC<-apply(eset,2,function(x){m=mine(x,label);m$MIC})
@@ -602,7 +588,8 @@ mcone<-function(eset,label,r){
     e=e+1
   }
   #return(eset[,subset])
-  return(subset)
+  subset_c<-as.character(colnames(eset)[subset])
+  return(subset_c)
 }
 
 #------------------------------------------------------------------------------------------
