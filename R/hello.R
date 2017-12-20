@@ -480,38 +480,61 @@ getFirstGeneSet<-function(moduleList){
 }
 #去冗余，每次去掉一个最差的特征
 #终止条件：连续下降3次，或者单次下降5百分点
-removeWF<-function(data,label){
+removeWF<-function(data,label,remainNum=2){
+  #记录每次迭代次数，精度，去掉的特征
+  len = ncol(data)-remainNum+1 #剩余迭代剩余次数+1
+  iter = vector(mode = "integer",length = len)
+  iter_acc = vector(mode = "numeric",length = len)
+  iter_f = vector(mode = "character",length = len)
+  #初始化数据，监控变量
   data1<-data
+  count = 1
   isStop = 0
-  index<-as.data.frame(c(1:ncol(data1)))
-  list1<-trainModelNN(data1,as.factor(label))
+  #初次没有删除元素，但是也要记录
+  list1<-trainModelNN(data1,as.factor(label)) #记录初始精度
   acc<-list1$result #去掉特征前的准确率
-  accs<-apply(index,1,function(x){
-    data2<-data1[,-x]
-    list1<-trainModelNN(data2,as.factor(label))
-    return(list1$result)
-  })
-  #得到准确率提升最大的
-  accs<-as.numeric(accs)
-  diff<-accs-acc #去掉每个特征后，性能提升情况
-  if(all(diff<0)){ #性能全部下降
-    if(max(diff)<(-0.05)) #下降最少的也降了5%，终止循环
-      break
-    if(isStop==2)#之前已经下降了两次了，终止循环
-      break
-    else
-      isStop=isStop+1
-  }else{
-    if(isStop!=0)
-      isStop=0
+  iter[1]=0
+  iter_f[1]="--"
+  iter_acc[1]=acc
+  #-----------------------------------------------------------------
+
+  while(len>1){ #如果没有终止，一直迭代到剩下remainNum个特征
+    index<-as.data.frame(c(1:ncol(data1))) #1-特征总数，将向量化为数据框
+    accs<-apply(index,1,function(x){
+      data2<-data1[,-x]
+      list1<-trainModelNN(data2,as.factor(label))
+      return(list1$result)
+    })
+    #得到准确率提升最大的
+    accs<-as.numeric(accs)
+    diff<-accs-acc #去掉每个特征后，性能提升情况
+    if(all(diff<0)){ #性能全部下降
+      if(max(diff)<(-0.05)) #下降最少的也降了5%，终止循环
+        break
+      if(isStop==2)#之前已经下降了两次了，终止循环
+        break
+      else
+        isStop=isStop+1
+    }else{#如果有一个是提升的，重置isStop
+      if(isStop!=0)
+        isStop=0
+    }
+    #删除特征
+    remove_index<-which(accs==max(accs)) #那个去掉后，让整体性能提升最多的特征索引
+    print(accs)
+    print(remove_index)
+
+    #记录
+    iter[count+1]<-count
+    iter_f[count+1]<-colnames(data1)[remove_index]
+    iter_acc[count+1]<-accs[remove_index]
+    #为下次迭代准备
+    len<-len-1
+    count<-count+1
+    data1<-data1[,-remove_index]
   }
-  remove_index<-which(acc==max(accs))
-  data1<-data1[,-remove_index]
-
-
-
-
-
+  result<-list(iter=iter,iter_f=iter_f,iter_acc=iter_acc)
+  return(result)
 
 }
 
