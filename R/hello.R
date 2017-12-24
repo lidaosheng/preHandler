@@ -484,9 +484,10 @@ removeCL<-function(data,moduleColors,module=NULL){
   if(!is.null(module))
     data = data[,which(moduleColors==module)]
   comboInfo<-findLinearCombos(data)
-  print(class(data))
-  data1<-data[,-comboInfo$remove]
-  return(data1)
+  if(length(comboInfo$remove)!=0){
+    data<-data[,-comboInfo$remove]
+  }
+  return(data)
 }
 #去冗余，每次去掉一个最差的特征
 #终止条件：连续下降3次，或者单次下降5百分点
