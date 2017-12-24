@@ -24,8 +24,6 @@ readTCGA<-function(path){
   }
   #输出
   write.csv(new_fpkm,"f:/data/output/output.csv",row.names = F)
-
-
 }
 
 #获取GPL平台的soft文件
@@ -530,6 +528,7 @@ removeWF<-function(data,label,remainNum=2){
     len<-len-1
     count<-count+1
     data1<-data1[,-remove_index]
+    acc<-max(accs)
   }
   result<-list(iter=iter,iter_f=iter_f,iter_acc=iter_acc)
   return(result)
