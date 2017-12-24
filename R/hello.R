@@ -476,6 +476,18 @@ getFirstGeneSet<-function(moduleList){
 
 
 }
+#去冗余，去掉模块多重共线基因
+removeCL<-function(data,moduleColors,module=NULL){
+  if(ncol(data)!=length(moduleColors)){
+    stop("data特征个数与moduleColor长度不匹配~")
+  }
+  if(!is.null(module))
+    data = data[,which(moduleColors==module)]
+  comboInfo<-findLinearCombos(data)
+  print(class(data))
+  data1<-data[,-comboInfo$remove]
+  return(data1)
+}
 #去冗余，每次去掉一个最差的特征
 #终止条件：连续下降3次，或者单次下降5百分点
 removeWF<-function(data,label,remainNum=2){
