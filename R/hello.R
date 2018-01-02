@@ -574,9 +574,25 @@ getFirstSet<-function(data,moduleColors,r=0.2){
   dataList<-sapply(moduleNames,function(x){
     data1<-data[,which(moduleColors==x)]
   })
-
-
-
+}
+#--聚类效果评估--
+assessCluster<-function(clust1,clust2){
+  if(length(clust1)!=length(clust2))
+    stop("clust1的长度和cluster2不等..")
+  if(is.character(clust1)|is.character(clust2)){
+    clust1<-as.factor(clust1)
+    clust2<-as.factor(clust2)
+    clust1<-as.integer(clust1)
+    clust2<-as.integer(clust2)
+  }
+  external.ind<-std.ext(clust1, clust2)
+  result<-list()
+  result$Rand<-clv.Rand(external.ind)
+  result$Jaccard<-clv.Jaccard(external.ind)
+  result$Folkes_Mallows<-clv.Folkes.Mallows(external.ind)
+  result$Phi<-clv.Phi(external.ind)
+  result$Russel_Rao<-clv.Russel.Rao(external.ind)
+  return(result)
 }
 mcone<-function(eset,label,r){
   #将所有特征与label的相关性存在micFC中，将相关性高的(>r)的索引记下，存于subset中
