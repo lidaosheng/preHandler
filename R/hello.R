@@ -27,12 +27,36 @@ readTCGA<-function(path){
 }
 
 #获取GPL平台的soft文件
-getSoft<-function(GPLNumber){
-  options(stringsAsFactors=F)
-  gpl<-getGEO(GPLNumber)
-  data<-gpl@dataTable
-  data<-data@table
-  return(data)
+getData<-function(path){
+  options(stringsAsFactors = F)
+  gset<-getGEO(filename = path)
+  eset<-exprs(gset)
+  feadata<-featureData(gset)
+  feadata<-feadata@data
+  if(length(which(feadata$ID!=rownames(eset)))==0){
+    rownames(eset)=feadata$`Gene Symbol`
+    eset<-eset[-which(rownames(eset)==""),] #去掉空的基因（即探针对应不上基因的条目）
+    result<-table(rownames(eset))
+    #获取重复基因名
+    dup<-names(which(result>1))
+
+    #基因的表达值合并后
+    for(x in dup){
+      #获取重复值为x的所有行
+      set<-eset[which(rownames(eset)==x),]
+      #将行叠加到一起
+      temp <- 1.0*colSums(set)/nrow(set)
+      #将eset中x的行都删掉，然后将set第一行补上去
+      eset<-eset[-which(rownames(eset)==x),]
+      eset<-rbind(eset,temp)
+      rownames(eset)[nrow(eset)]<-x
+    }
+
+  }else{
+    stop("eset的探针名和注释文件不对应")
+  }
+  return(eset)
+
 }
 #将探针转换成基因名,行基因，列样本.后面三个参数是注释文件
 probToGene<-function(eset=data.frame(),transfer=data.frame(),p_name="",g_name=""){
