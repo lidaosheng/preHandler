@@ -28,6 +28,7 @@ readTCGA<-function(path){
 
 #获取GPL平台的soft文件
 getData<-function(path){
+  library(GEOquery)
   options(stringsAsFactors = F)
   gset<-getGEO(filename = path)
   eset<-exprs(gset)
@@ -58,39 +59,7 @@ getData<-function(path){
   return(eset)
 
 }
-#将探针转换成基因名,行基因，列样本.后面三个参数是注释文件
-probToGene<-function(eset=data.frame(),transfer=data.frame(),p_name="",g_name=""){
-  if(all(dim(eset)==0)||all(dim(transfer)==0))stop("参数eset,或者transfer为空")
-  if(p_name==""||g_name=="")stop("p_name或g_name为空")
-  #将探针(行标)，添加一列到eset
-  eset<-as.data.frame(eset)
-  col<-colnames(transfer)
-  transfer<-transfer[,c(which(p_name==col),which(g_name==col))]
-  eset<-cbind(eset,prob=as.character(rownames(eset)))
-  eset2<-left_join(eset,transfer,by=c("prob"=p_name))
-  rm(eset)
-  #去掉没有对应基因的探针
-  eset2<-subset(eset2,!is.na(eset2[g_name]))
-  #统计每个基因名出现次数
-  result<-table(eset2[g_name])
-  #获取重复基因名
-  dup<-names(which(result>1))
-  #基因的表达值合并后
-  for(x in dup){
-    #获取重复值为x的所有行
-    set<-subset(eset2,eset2[g_name]==x)
-    #除了倒数两列，把其余行累加到第一行
-    set[1,-c(dim(set)[2]-1,dim(set)[2])] <- colSums(set[,-c(dim(set)[2]-1,dim(set)[2])])/(dim(set)[1])
-    #将eset中x的行都删掉，然后将set第一行补上去
-    eset2<-subset(eset2,eset2[g_name]!=x)
-    eset2<-rbind(eset2,set[1,])
-  }
-  rownames(eset2)<-eset2[,g_name]
-  col<-colnames(eset2)
-  eset2<-eset2[,-c(which("prob"==col),which(g_name==col))]
-  rm(x,dup,result)
-  return(eset2)
-}
+
 celToExprs<-function(fileDir){
   # filters <- matrix(c("CEL file", ".[Cc][Ee][Ll]", "All", ".*"), ncol = 2, byrow = T)
   # cel.files <-tk_choose.files(fileDir,caption = "Select CELs", multi = TRUE,filters = filters, index = 1)
