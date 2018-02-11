@@ -26,7 +26,7 @@ readTCGA<-function(path){
   write.csv(new_fpkm,"f:/data/output/output.csv",row.names = F)
 }
 
-#获取GPL平台的soft文件
+#path为GEO的数据文件.gz的本地路径，输出行基因，列样本矩阵
 getData<-function(path){
   library(GEOquery)
   options(stringsAsFactors = F)
@@ -40,7 +40,6 @@ getData<-function(path){
     result<-table(rownames(eset))
     #获取重复基因名
     dup<-names(which(result>1))
-
     #基因的表达值合并后
     for(x in dup){
       #获取重复值为x的所有行
@@ -56,10 +55,20 @@ getData<-function(path){
   }else{
     stop("eset的探针名和注释文件不对应")
   }
-  return(eset)
+  result<-list(feadata=feadata,eset=eset)
+  return(result)
 
 }
+#富集分析评估
+enrichmentAssess<-function(eset,moduleColors){
+  background<-colnames(eset)
+  modules<-unique(moduleColors)
+  all.genes<-apply(as.data.frame(modules),1,function(x){
+    module<-colnames(eset)[which(moduleColors==x)]
+    return(module)
+  })
 
+}
 celToExprs<-function(fileDir){
   # filters <- matrix(c("CEL file", ".[Cc][Ee][Ll]", "All", ".*"), ncol = 2, byrow = T)
   # cel.files <-tk_choose.files(fileDir,caption = "Select CELs", multi = TRUE,filters = filters, index = 1)
@@ -616,24 +625,7 @@ mcone<-function(eset,label,r){
 #------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------
 #m是字符向量
-test<-function(m){
-  list1<-trainModelNN(eset[,m],label,NULL)
-  m_nn<-list1$nn
-  result1<-list1$result
-  print("gse6710:")
-  s6710 = testModel(eset6710[,m],label6710,m_nn)
-  print("gse13355:")
-  s13355 = result1
-  print("gse14905:")
-  s14905 = testModel(eset14905t[,m],label14905t,m_nn)
-  print("gse30999:")
-  s30999 = testModel(eset30999[,m],label30999,m_nn)
-  print("gse41662:")
-  s41662 = testModel(eset41662[,m],label41662,m_nn)
-  result<-c(s_6710=s6710,s_13355=s13355,s_14905=s14905,s_30999=s30999,s_41662=s41662)
-  list1<-list(result=result,nn=m_nn)
-  return(list1)
-}
+
 #路径以目标文件夹加/结尾
 test2<-function(fileDir,eset,label){
   files<-list.files(fileDir)
@@ -643,40 +635,6 @@ test2<-function(fileDir,eset,label){
   return(result1)
 }
 
-testFeature<-function(features,datasets){
-  result = testModel(datasets[1][,features],label[1],nn)
-}
-#去冗余,一次随机森林得到的重要度表
-chooseFeatureNN<-function(eset,label,importances){
-  importances<-importances[,]
-  #importance_list = NULL
-  s_6710 = c()
-  s_13355 = c()
-  s_14905 = c()
-  s_30999 = c()
-  s_41662 = c()
-  #目前一个特征做随机森林会报错，后面解决
-  while(length(importances)>1){
-    genes = names(importances)
-    list1 = test(genes)
-    result1 = list1$result #当前基因集合在各个数据集上的预测结果
-    s_6710 = c(s_6710,result1[1]) #将本集合结果添加到新行
-    s_13355 = c(s_13355,result1[2])
-    s_14905 = c(s_14905,result1[3])
-    s_30999 = c(s_30999,result1[4])
-    s_41662 = c(s_41662,result1[5])
-
-    #print("continue to remove the worst feature(y,n)?")
-    #print(importances)
-    #mtry<-scan("",what = character(0),nlines = 1)
-    #获取重要程度最低的基因
-    removed<-names(importances[which(importances==min(importances))])
-    genes = setdiff(genes,removed)
-    #去掉重要程度最低的基因，并更新importance列表
-    importances<-importances[genes]
-  }
-  result<-list(s6710=s_6710,s13355=s_13355,s14905=s_14905,s30999=s_30999,s41662=s_41662)
-}
 
 createConfusionMatrix <- function(act, pred) {
   # You've mentioned that neither actual nor predicted may give a complete
@@ -687,4 +645,112 @@ createConfusionMatrix <- function(act, pred) {
   pred <- pred[order(act)]
   act  <- act[order(act)]
   sapply(split(pred, act), tabulate, nbins=numClasses)
+}
+#验证用的方法，来看特征在模块中的位置
+showCorPos<-function(eset,moduleColors,choose,label){
+  colors<-unique(moduleColors)
+  #获取choose所在模块颜色
+  indexes<-match(choose,colnames(eset))
+  choose_colors<-moduleColors[indexes]
+  #获得各个模块表达谱子集,命名为color
+  for(i in 1:length(colors)){
+    str<-paste0(colors[i],'<-',substitute(eset),'[,which(moduleColors=="',colors[i],'")]')
+    eval(parse(text=str))
+  }
+  print(colors)
+  print('------------美丽的分割线--------------------')
+  print(ls())
+  #获取各个模块和label的cor的降序基因名,命名为color_dec
+  for(i in 1:length(colors)){
+    print(paste(colors[i],"标记1"))
+    str<-paste0('cor_',colors[i],'<-cor(',colors[i],',label)')
+    eval(parse(text=str))
+    str<-paste0('cor_',colors[i],'<-t(cor_',colors[i],')')
+    eval(parse(text=str))
+    str<-paste0('cor_',colors[i],'<-as.data.frame(cor_',colors[i],')')
+    eval(parse(text=str))
+    str<-paste0('cor_',colors[i],'<-sort(abs(cor_',colors[i],'),decreasing=T)')
+    eval(parse(text=str))
+    str<-paste0(colors[i],'_dec<-colnames(cor_',colors[i],')')
+    eval(parse(text=str))
+    print(ls(pattern = "cor_*"))
+  }
+  print('-------------美丽分割线----------------')
+  print(ls(pattern = "cor_*"))
+  #获得各个模块的cor排名
+  rank<-vector(length = length(choose),mode = "integer")
+  for(i in 1:length(choose)){
+    str<-paste0('rank[i]<-match("',choose[i],'",',choose_colors[i],'_dec)')
+    eval(parse(text=str))
+  }
+  return(rank)
+
+}
+#验证用的方法，来看特征在模块中的位置
+wgcnaPredict<-function(eset,moduleColors,choose,label){
+  colors<-unique(moduleColors)
+  #获取choose所在模块颜色
+  indexes<-match(choose,colnames(eset))
+  choose_colors<-moduleColors[indexes]
+  #获得各个模块表达谱子集,命名为color
+  for(i in 1:length(colors)){
+    str<-paste0(colors[i],'<-',substitute(eset),'[,which(moduleColors=="',colors[i],'")]')
+    eval(parse(text=str))
+  }
+  #获取各个模块和label的cor的降序基因名,命名为color_dec
+  for(i in 1:length(colors)){
+    print(paste(colors[i],"标记1"))
+    str<-paste0('cor_',colors[i],'<-cor(',colors[i],',label)')
+    eval(parse(text=str))
+    str<-paste0('cor_',colors[i],'<-t(cor_',colors[i],')')
+    eval(parse(text=str))
+    str<-paste0('cor_',colors[i],'<-as.data.frame(cor_',colors[i],')')
+    eval(parse(text=str))
+    str<-paste0('cor_',colors[i],'<-sort(abs(cor_',colors[i],'),decreasing=T)')
+    eval(parse(text=str))
+    str<-paste0(colors[i],'_dec<-colnames(cor_',colors[i],')')
+    eval(parse(text=str))
+  }
+  #将各个模块cor第一名放进去，颜色顺序与colors同
+  first<-vector(length = length(colors),mode = "character")
+  for(i in 1:length(colors)){
+    str<-paste0('first[i]<-colnames(cor_',colors[i],')[1]')
+    eval(parse(text = str))
+  }
+  #获取初始准确度
+  init_acc<-trainModelNN(eset[,first],as.factor(label)) #记录初始精度
+  init_acc<-init_acc$result
+  #迭代替换基因
+  genelist<-first
+  for(i in 1:length(colors)){
+    str<-paste0('genelist<-replaceGene(genelist,',colors[i],'_dec,i,eset)')
+    eval(parse(text = str))
+  }
+  return(genelist)
+}
+
+#替换指定模块基因
+replaceGene<-function(geneVector,color_dec,index,eset){
+  print("------------------替换前精度------------")
+  list1<-trainModelNN(eset[,geneVector],as.factor(label)) #记录初始精度
+  acc<-list1$result #去掉特征前的准确率
+  print(acc)
+  acc_max<-acc
+  max_index<-1
+  geneVector2<-geneVector
+  for(i in 2:length(color_dec)){
+    geneVector2[index]<-color_dec[i]
+    list2<-trainModelNN(eset[,geneVector2],as.factor(label)) #记录初始精度
+    acc2<-list2$result #交换之后精度
+    if(acc2>acc_max){
+      max_index<-i
+      acc_max<-acc2
+    }
+  }
+  geneVector[index]=color_dec[max_index]
+  print("------------------替换后精度------------")
+  list1<-trainModelNN(eset[,geneVector],as.factor(label)) #记录初始精度
+  acc<-list1$result #去掉特征前的准确率
+  print(acc)
+  return(geneVector)
 }
