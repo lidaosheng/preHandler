@@ -262,6 +262,9 @@ moduleDetect<-function(eset,dissTOM){
 
   MElist<-moduleEigengenes(eset,colors=dynamicColors)
   MEs <- MElist$eigengenes
+  if(length(is.na(MEs$MEgrey))>0){
+    MEs$MEgrey<-NULL
+  }
   MEDiss<-1-cor(MEs)
   METree<-hclust(as.dist(MEDiss),method="average")
   #Graphical the result
@@ -492,7 +495,7 @@ removeCL<-function(data,moduleColors,module=NULL){
   return(data)
 }
 #去冗余，每次去掉一个最差的特征
-#终止条件：连续下降3次，或者单次下降5百分点
+#终止条件：连续下降3次，或者单次下降2百分点
 removeWF<-function(data,label,remainNum=2){
   #记录每次迭代次数，精度，去掉的特征
   len = ncol(data)-remainNum+1 #剩余迭代剩余次数+1
@@ -514,36 +517,37 @@ removeWF<-function(data,label,remainNum=2){
     index<-as.data.frame(c(1:ncol(data1))) #1-特征总数，将向量化为数据框
     accs<-apply(index,1,function(x){
       data2<-data1[,-x]
-      list1<-trainModelNN(data2,as.factor(label))
-      return(list1$result)
+      acc_t<-trainModelNN(data2,as.factor(label))$result
     })
     #得到准确率提升最大的
     accs<-as.numeric(accs)
-    diff<-accs-acc #去掉每个特征后，性能提升情况
-    if(all(diff<0)){ #性能全部下降
-      if(max(diff)<(-0.05)) #下降最少的也降了5%，终止循环
-        break
-      if(isStop==2)#之前已经下降了两次了，终止循环
-        break
-      else
-        isStop=isStop+1
-    }else{#如果有一个是提升的，重置isStop
-      if(isStop!=0)
-        isStop=0
-    }
-    #删除特征
+    #diff<-accs-acc #去掉每个特征后，性能提升情况
+    remove_index=NULL
+    #-----------------------------------------------------------------------------------
+    # if(all(diff<0)){ #性能全部下降
+    #   iter_f[count+1]<-'empty'
+    #   iter_acc[count+1]<-acc #精度是之前的精度，因为没有移除
+    # }else{#如果有一个是提升的，重置isStop
     remove_index<-which(accs==max(accs)) #那个去掉后，让整体性能提升最多的特征索引
-    print(accs)
-    print(remove_index)
-    #记录
-    iter[count+1]<-count
     iter_f[count+1]<-colnames(data1)[remove_index]
     iter_acc[count+1]<-accs[remove_index]
-    #为下次迭代准备
-    len<-len-1
-    count<-count+1
     data1<-data1[,-remove_index]
-    acc<-max(accs)
+    #acc<-max(accs)
+    len<-len-1
+    iter[count+1]<-count
+    count<-count+1
+    #-----------------------------------------------------------------------------------
+    #删除特征
+    #remove_index<-which(accs==max(accs)) #那个去掉后，让整体性能提升最多的特征索引
+    #记录
+    # iter[count+1]<-count
+    # iter_f[count+1]<-colnames(data1)[remove_index]
+    # #iter_acc[count+1]<-accs[remove_index]
+    # #为下次迭代准备
+    # len<-len-1
+    # count<-count+1
+    # data1<-data1[,-remove_index]
+    # acc<-max(accs)
   }
   result<-list(iter=iter,iter_f=iter_f,iter_acc=iter_acc)
   return(result)
@@ -686,20 +690,17 @@ showCorPos<-function(eset,moduleColors,choose,label){
   return(rank)
 
 }
-#验证用的方法，来看特征在模块中的位置
-wgcnaPredict<-function(eset,moduleColors,choose,label){
-  colors<-unique(moduleColors)
-  #获取choose所在模块颜色
-  indexes<-match(choose,colnames(eset))
-  choose_colors<-moduleColors[indexes]
-  #获得各个模块表达谱子集,命名为color
+#验证用的方法，来看特征在模块中的位置,choose:features are known
+wgcnaPredict<-function(eset,moduleColors,label){
+  colors<-table(moduleColors)
+  removeColors<-names(which(colors==1))
+  colors<-setdiff(names(colors),removeColors)
   for(i in 1:length(colors)){
-    str<-paste0(colors[i],'<-',substitute(eset),'[,which(moduleColors=="',colors[i],'")]')
+    str<-paste0(colors[i],'<-as.data.frame(eset[,which(moduleColors=="',colors[i],'")])')
     eval(parse(text=str))
   }
   #获取各个模块和label的cor的降序基因名,命名为color_dec
   for(i in 1:length(colors)){
-    print(paste(colors[i],"标记1"))
     str<-paste0('cor_',colors[i],'<-cor(',colors[i],',label)')
     eval(parse(text=str))
     str<-paste0('cor_',colors[i],'<-t(cor_',colors[i],')')
@@ -714,43 +715,38 @@ wgcnaPredict<-function(eset,moduleColors,choose,label){
   #将各个模块cor第一名放进去，颜色顺序与colors同
   first<-vector(length = length(colors),mode = "character")
   for(i in 1:length(colors)){
+    #应该使用color_dec，以缩小范围，这里暂时全部遍历，不影响
     str<-paste0('first[i]<-colnames(cor_',colors[i],')[1]')
     eval(parse(text = str))
   }
-  #获取初始准确度
-  init_acc<-trainModelNN(eset[,first],as.factor(label)) #记录初始精度
-  init_acc<-init_acc$result
   #迭代替换基因
   genelist<-first
   for(i in 1:length(colors)){
-    str<-paste0('genelist<-replaceGene(genelist,',colors[i],'_dec,i,eset)')
+    str<-paste0('genelist<-replaceGene(genelist,',colors[i],'_dec,i,eset,label)')
     eval(parse(text = str))
   }
   return(genelist)
 }
 
-#替换指定模块基因
-replaceGene<-function(geneVector,color_dec,index,eset){
-  print("------------------替换前精度------------")
-  list1<-trainModelNN(eset[,geneVector],as.factor(label)) #记录初始精度
-  acc<-list1$result #去掉特征前的准确率
-  print(acc)
+#replace geneVector genes with gene in coresponding module,to reach the highest predict score
+replaceGene<-function(geneVector,color_dec,index,eset,label){
+  if(length(color_dec)==1){
+    return(geneVector)
+  }
+  acc<-trainModelNN(eset[,geneVector],as.factor(label))$result #记录初始精度
   acc_max<-acc
   max_index<-1
   geneVector2<-geneVector
+  #replace gene with other gene which belong to same module,and pick the highest score gene and replace
   for(i in 2:length(color_dec)){
-    geneVector2[index]<-color_dec[i]
-    list2<-trainModelNN(eset[,geneVector2],as.factor(label)) #记录初始精度
-    acc2<-list2$result #交换之后精度
+    geneVector2[index]<-color_dec[i] #replace it with genes in the same module
+    acc2<-trainModelNN(eset[,geneVector2],as.factor(label))$result #记录初始精度
     if(acc2>acc_max){
       max_index<-i
       acc_max<-acc2
     }
   }
   geneVector[index]=color_dec[max_index]
-  print("------------------替换后精度------------")
-  list1<-trainModelNN(eset[,geneVector],as.factor(label)) #记录初始精度
-  acc<-list1$result #去掉特征前的准确率
-  print(acc)
+  acc<-trainModelNN(eset[,geneVector],as.factor(label))$result #记录初始精度
   return(geneVector)
 }
