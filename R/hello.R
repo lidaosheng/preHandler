@@ -643,8 +643,11 @@ removeWF<-function(data,label,remainNum=2){
   result<-list(genelist=genelist,acc=max(iter_acc),iter_f=iter_f,iter_acc=iter_acc)
   return(result)
 }
-#验证用的方法，来看特征在模块中的位置,choose:features are known
-wgcnaPredict<-function(eset,moduleColors,label){
+#eset行样本，列特征
+wgcnaPredict<-function(eset,label){
+  eset<-prepareData(eset)
+  dissTOM<-1-cor(eset)
+  moduleColors<-moduleDetect(eset,dissTOM)
   colors<-table(moduleColors)
   removeColors<-names(which(colors==1))
   colors<-setdiff(names(colors),removeColors)
