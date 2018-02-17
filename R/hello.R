@@ -475,105 +475,8 @@ chooseModuleByCor<-function(moduleTraitCor,threshold=0.7){
   chooseModule<-rownames(moduleTraitCor)[index] #MEpink
   return(chooseModule)
 }
-#在感兴趣的模块中挑选出首批基因集合用于下一步的特征选择
-getFirstGeneSet<-function(moduleList){
-
-
-
-}
-#去冗余，去掉模块多重共线基因
-removeCL<-function(data,moduleColors,module=NULL){
-  if(ncol(data)!=length(moduleColors)){
-    stop("data特征个数与moduleColor长度不匹配~")
-  }
-  if(!is.null(module))
-    data = data[,which(moduleColors==module)]
-  comboInfo<-findLinearCombos(data)
-  if(length(comboInfo$remove)!=0){
-    data<-data[,-comboInfo$remove]
-  }
-  return(data)
-}
-#去冗余，每次去掉一个最差的特征
-#终止条件：连续下降3次，或者单次下降2百分点
-removeWF<-function(data,label,remainNum=2){
-  #记录每次迭代次数，精度，去掉的特征
-  len = ncol(data)-remainNum+1 #剩余迭代剩余次数+1
-  iter = vector(mode = "integer",length = len)
-  iter_acc = vector(mode = "numeric",length = len)
-  iter_f = vector(mode = "character",length = len)
-  #初始化数据，监控变量
-  data1<-data
-  count = 1
-  isStop = 0
-  #初次没有删除元素，但是也要记录
-  list1<-trainModelNN(data1,as.factor(label)) #记录初始精度
-  acc<-list1$result #去掉特征前的准确率
-  iter[1]=0
-  iter_f[1]="--"
-  iter_acc[1]=acc
-  #-----------------------------------------------------------------
-  while(len>1){ #如果没有终止，一直迭代到剩下remainNum个特征
-    index<-as.data.frame(c(1:ncol(data1))) #1-特征总数，将向量化为数据框
-    accs<-apply(index,1,function(x){
-      data2<-data1[,-x]
-      acc_t<-trainModelNN(data2,as.factor(label))$result
-    })
-    #得到准确率提升最大的
-    accs<-as.numeric(accs)
-    #diff<-accs-acc #去掉每个特征后，性能提升情况
-    remove_index=NULL
-    #-----------------------------------------------------------------------------------
-    # if(all(diff<0)){ #性能全部下降
-    #   iter_f[count+1]<-'empty'
-    #   iter_acc[count+1]<-acc #精度是之前的精度，因为没有移除
-    # }else{#如果有一个是提升的，重置isStop
-    remove_index<-which(accs==max(accs)) #那个去掉后，让整体性能提升最多的特征索引
-    iter_f[count+1]<-colnames(data1)[remove_index]
-    iter_acc[count+1]<-accs[remove_index]
-    data1<-data1[,-remove_index]
-    #acc<-max(accs)
-    len<-len-1
-    iter[count+1]<-count
-    count<-count+1
-    #-----------------------------------------------------------------------------------
-    #删除特征
-    #remove_index<-which(accs==max(accs)) #那个去掉后，让整体性能提升最多的特征索引
-    #记录
-    # iter[count+1]<-count
-    # iter_f[count+1]<-colnames(data1)[remove_index]
-    # #iter_acc[count+1]<-accs[remove_index]
-    # #为下次迭代准备
-    # len<-len-1
-    # count<-count+1
-    # data1<-data1[,-remove_index]
-    # acc<-max(accs)
-  }
-  result<-list(iter=iter,iter_f=iter_f,iter_acc=iter_acc)
-  return(result)
-}
 
 #-----------------------------------------------------------------------------------------
-#eset是行基因，列样本
-biomarkerPick<-function(eset,label){
-  #去掉低方差，填补缺失值
-  zerovar<-nearZeroVar(t(eset))
-  eset<-t(eset)[,-zerovar]
-  imp<-preProcess(eset,method="knnImpute",k=5)
-  eset<-predict(imp,eset)
-
-  eset<-reduceGeneNum(eset)      #保留变异系数前5000的基因
-  el<-removeOutliers(eset,label) #
-  eset<-el$eset
-  label<-el$label
-
-  dissTOM<-buildNetwork(eset)
-  moduleColors<-moduleDetect(eset,dissTOM)
-  moduleTraitCor<-relateMT(eset,moduleColors,label)
-  chooseModule<-chooseModuleByCor(moduleTraitCor)
-  genes<-getFirstGeneSet(chooseModule) #筛选出第一批基因作为候选基因
-
-}
 #将每个模块中互信息最高的挑选出来合并
 getFirstSet<-function(data,moduleColors,r=0.2){
   moduleNames<-unique(moduleColors)
@@ -606,7 +509,6 @@ mcone<-function(eset,label,r){
   subset<-micFC[micFC>r] #将与label相关性高于r的选出
   subset<-sort(subset,decreasing = T) #降序排列
   names1<-names(subset)
-  print("到了这里1")
   subset<-sapply(names1,function(x){which(colnames(eset)==x)}) #降序后，基因在原eset中的位置索引
   subset<-as.integer(subset)
   numSubset = length(subset)
@@ -690,6 +592,57 @@ showCorPos<-function(eset,moduleColors,choose,label){
   return(rank)
 
 }
+
+#去冗余，每次去掉一个最差的特征
+#终止条件：连续下降3次，或者单次下降2百分点
+removeWF<-function(data,label,remainNum=2){
+  #记录每次迭代次数，精度，去掉的特征
+  len = ncol(data)-remainNum+1 #剩余迭代剩余次数+1
+  print(paste(ncol(data),"---",remainNum,"----",len))
+  iter = vector(mode = "integer",length = len)
+  iter_acc = vector(mode = "numeric",length = len)
+  iter_f = vector(mode = "character",length = len)
+  #初始化数据，监控变量
+  data1<-data
+  print("到了这里1")
+  count = 1
+  isStop = 0
+  #初次没有删除元素，但是也要记录
+  list1<-trainModelNN(data1,as.factor(label)) #记录初始精度
+  acc<-list1$result #去掉特征前的准确率
+  iter[1]=0
+  iter_f[1]="--"
+  iter_acc[1]=acc
+  print("到了这里2")
+  #-----------------------------------------------------------------
+  while(len>1){ #如果没有终止，一直迭代到剩下remainNum个特征
+    index<-as.data.frame(c(1:ncol(data1))) #1-特征总数，将向量化为数据框
+    accs<-apply(index,1,function(x){
+      data2<-data1[,-x]
+      acc_t<-trainModelNN(data2,as.factor(label))$result
+    })
+    #得到准确率提升最大的
+    accs<-as.numeric(accs)
+    remove_index=NULL
+    remove_index<-which(accs==max(accs)) #那个去掉后，让整体性能提升最多的特征索引
+    iter_f[count+1]<-colnames(data1)[remove_index]
+    iter_acc[count+1]<-accs[remove_index]
+    data1<-data1[,-remove_index]
+    len<-len-1
+    iter[count+1]<-count
+    count<-count+1
+  }
+  pos<-which(iter_acc==max(iter_acc))
+  pos<-pos[length(pos)]#精度最高，长度最少
+  rmGenes<-iter_f[1:pos]
+  genelist<-colnames(data)
+  x<-match(rmGenes,genelist)
+  x<-x[-which(is.na(x))]
+  if(length(x)>0)
+    genelist<-genelist[-x]
+  result<-list(genelist=genelist,acc=max(iter_acc),iter_f=iter_f,iter_acc=iter_acc)
+  return(result)
+}
 #验证用的方法，来看特征在模块中的位置,choose:features are known
 wgcnaPredict<-function(eset,moduleColors,label){
   colors<-table(moduleColors)
@@ -725,7 +678,8 @@ wgcnaPredict<-function(eset,moduleColors,label){
     str<-paste0('genelist<-replaceGene(genelist,',colors[i],'_dec,i,eset,label)')
     eval(parse(text = str))
   }
-  return(genelist)
+  result2<-removeWF(eset[,genelist],as.integer(label))
+  return(result2$genelist)
 }
 
 #replace geneVector genes with gene in coresponding module,to reach the highest predict score
@@ -749,4 +703,39 @@ replaceGene<-function(geneVector,color_dec,index,eset,label){
   geneVector[index]=color_dec[max_index]
   acc<-trainModelNN(eset[,geneVector],as.factor(label))$result #记录初始精度
   return(geneVector)
+}
+#准备工作，数据清理，降维度
+#eset行样本，列特征
+#label为样本标签，integer格式
+prepareData<-function(eset){
+  #去掉缺失值--------------------------------------------------------------
+  print("Removing feature with missing value...")
+  if(length(is.na(eset))>0){
+    missIndex<-apply(eset6710,2,function(x){length(which(is.na(x)))>0})
+    missIndex<-as.integer(which(missIndex))
+    if(length(missIndex)>0)
+      eset<-eset[,-missIndex]
+  }
+
+  #去掉零方差--------------------------------------------------------------
+  print("Removing features with zero variance...")
+  zerovar<-nearZeroVar(eset)
+  if(length(zerovar)>0)
+    eset<-eset[,-zerovar]
+
+  if(dim(eset)[2]<5000){return(eset)}
+  eset <- eset[,order(apply(eset,2,mad), decreasing = T)[1:5000]]
+
+  #去除多重共线基因--------------------------------------------------------
+  descrCorr<-cor(eset)
+  highCorr<-findCorrelation(descrCorr,0.9)
+  if(length(highCorr)>0)
+    eset<-eset[,-highCorr]
+  comboInfo<-findLinearCombos(eset)
+  print("------------------------------------------11----")
+  if(length(comboInfo$remove)>0)
+    eset<-eset[,-comboInfo$remove]
+  #离群样本
+  #e_l<-removeOutliers(eset,label)
+  return(eset)
 }
