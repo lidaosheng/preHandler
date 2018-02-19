@@ -645,9 +645,10 @@ removeWF<-function(data,label,remainNum=2){
 }
 #eset行样本，列特征
 wgcnaPredict<-function(eset,label){
-  eset<-prepareData(eset)
-  dissTOM<-1-cor(eset)
-  moduleColors<-moduleDetect(eset,dissTOM)
+  # eset<-prepareData(eset)
+  eset2<-scale(eset)
+  dissTOM<-1-cor(eset2)
+  moduleColors<-moduleDetect(eset2,dissTOM)
   colors<-table(moduleColors)
   removeColors<-names(which(colors==1))
   colors<-setdiff(names(colors),removeColors)
@@ -676,13 +677,15 @@ wgcnaPredict<-function(eset,label){
     eval(parse(text = str))
   }
   #迭代替换基因
+  print("Starting replace features in genelist ...")
   genelist<-first
   for(i in 1:length(colors)){
     str<-paste0('genelist<-replaceGene(genelist,',colors[i],'_dec,i,eset,label)')
     eval(parse(text = str))
   }
+  print("Starting remove least contribution feature ... ")
   result2<-removeWF(eset[,genelist],as.integer(label))
-  return(result2$genelist)
+  return(result2)
 }
 
 #replace geneVector genes with gene in coresponding module,to reach the highest predict score
@@ -714,7 +717,7 @@ prepareData<-function(eset){
   #去掉缺失值--------------------------------------------------------------
   print("Removing feature with missing value...")
   if(length(is.na(eset))>0){
-    missIndex<-apply(eset6710,2,function(x){length(which(is.na(x)))>0})
+    missIndex<-apply(eset,2,function(x){length(which(is.na(x)))>0})
     missIndex<-as.integer(which(missIndex))
     if(length(missIndex)>0)
       eset<-eset[,-missIndex]
