@@ -651,37 +651,25 @@ wgcnaPredict<-function(eset,label){
   colors<-table(moduleColors)
   removeColors<-names(which(colors==1))
   colors<-setdiff(names(colors),removeColors)
-  for(i in 1:length(colors)){
-    str<-paste0(colors[i],'<-as.data.frame(eset[,which(moduleColors=="',colors[i],'")])')
-    eval(parse(text=str))
-  }
+  #colors为eset子集，即模块表达谱
+  colors<-sapply(colors,function(x){x<-as.data.frame(eset[,which(moduleColors==x)])})
   #获取各个模块和label的cor的降序基因名,命名为color_dec
-  for(i in 1:length(colors)){
-    str<-paste0('cor_',colors[i],'<-cor(',colors[i],',label)')
-    eval(parse(text=str))
-    str<-paste0('cor_',colors[i],'<-t(cor_',colors[i],')')
-    eval(parse(text=str))
-    str<-paste0('cor_',colors[i],'<-as.data.frame(cor_',colors[i],')')
-    eval(parse(text=str))
-    str<-paste0('cor_',colors[i],'<-sort(abs(cor_',colors[i],'),decreasing=T)')
-    eval(parse(text=str))
-    str<-paste0(colors[i],'_dec<-colnames(cor_',colors[i],')')
-    eval(parse(text=str))
-  }
+  colors_dec<-sapply(colors, function(x){
+    cor1<-cor(x,label)
+    cor1<-t(cor1)
+    cor1<-as.data.frame(cor1)
+    cor1<-sort(abs(cor1),decreasing = T)
+    cor1<-colnames(cor1)
+  })
   #将各个模块cor第一名放进去，颜色顺序与colors同
-  first<-vector(length = length(colors),mode = "character")
-  for(i in 1:length(colors)){
-    #应该使用color_dec，以缩小范围，这里暂时全部遍历，不影响
-    str<-paste0('first[i]<-colnames(cor_',colors[i],')[1]')
-    eval(parse(text = str))
-  }
+  first<-sapply(colors_dec, function(x){x[1]})
   #迭代替换基因
   print("Starting replace features in genelist ...")
-  genelist<-first
+  genelist<-as.character(first)
   for(i in 1:length(colors)){
-    str<-paste0('genelist<-replaceGene(genelist,',colors[i],'_dec,i,eset,label)')
-    eval(parse(text = str))
+    genelist<-replaceGene(genelist,colors_dec[i],i,eset,label)
   }
+  # genelist<-mapply(function(x,y){replaceGene(genelist,x,y,eset,label)},colors_dec,1:length(colors_dec))
   print("Starting remove least contribution feature ... ")
   result2<-removeWF(eset[,genelist],as.integer(label))
   return(result2)
