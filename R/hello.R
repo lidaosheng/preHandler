@@ -598,7 +598,6 @@ showCorPos<-function(eset,moduleColors,choose,label){
 removeWF<-function(data,label,remainNum=2){
   #记录每次迭代次数，精度，去掉的特征
   len = ncol(data)-remainNum+1 #剩余迭代剩余次数+1
-  print(paste(ncol(data),"---",remainNum,"----",len))
   iter = vector(mode = "integer",length = len)
   iter_acc = vector(mode = "numeric",length = len)
   iter_f = vector(mode = "character",length = len)
@@ -615,7 +614,7 @@ removeWF<-function(data,label,remainNum=2){
   iter_acc[1]=acc
   print("到了这里2")
   #-----------------------------------------------------------------
-  while(len>1){ #如果没有终止，一直迭代到剩下remainNum个特征
+  while(len>1&&ncol(data1)>1){ #如果没有终止，一直迭代到剩下remainNum个特征
     index<-as.data.frame(c(1:ncol(data1))) #1-特征总数，将向量化为数据框
     accs<-apply(index,1,function(x){
       data2<-data1[,-x]
@@ -709,6 +708,18 @@ replaceGene<-function(geneVector,color_dec,index,eset,label){
   geneVector[index]=color_dec[max_index]
   acc<-trainModelNN(eset[,geneVector],as.factor(label))$result #记录初始精度
   return(geneVector)
+}
+#--------------------------------------------------------------------------
+addGene<-function(geneVector,color_dec,index,eset,label){
+  colors_index<-match(geneVector,colnames(eset))
+  colors<-moduleColors[colors_index]
+  colors<-unique(colors)
+  for(i in 1:length(colors)){
+    #str<-paste0('geneVector2<-unique(c(geneVector,',colors,'_dec[i]))')
+    str<-paste0('sapply(',colors[i],'_dec)')
+
+  }
+
 }
 #准备工作，数据清理，降维度
 #eset行样本，列特征
