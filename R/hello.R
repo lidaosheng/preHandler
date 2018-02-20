@@ -204,7 +204,7 @@ removeOutliers<-function(eset,label){
   return(e_l)
 }
 #build a network,eset has its labels
-buildNetwork<-function(eset,auto=TRUE){
+buildNetwork<-function(eset){
   again=TRUE
   powers<-NULL
   while(again){
@@ -250,77 +250,52 @@ buildNetwork<-function(eset,auto=TRUE){
   return(dissTOM_P)
 }
 #a function to detect modules
-moduleDetect<-function(eset,dissTOM,auto=TRUE){
+moduleDetect<-function(eset,dissTOM){
   geneTree <- hclust(as.dist(dissTOM), method = "average")
-  if(auto==FALSE){
-    plot(geneTree, xlab="", sub="", main = "Gene clustering on TOM-based dissimilarity",labels = FALSE, hang = 0.04)
-    ## I'll add a check for the input valid later
-    print("input a minSize(integer) for module detect:")
-    minSize<-scan("",what = integer(0),nlines = 1)
-    dynamicMods = cutreeDynamic(dendro = geneTree, distM = dissTOM,deepSplit = 2, pamRespectsDendro = FALSE,minClusterSize = minSize)
-    dynamicColors = labels2colors(dynamicMods)
-    print(class(dynamicColors))
+  plot(geneTree, xlab="", sub="", main = "Gene clustering on TOM-based dissimilarity",labels = FALSE, hang = 0.04)
+  ## I'll add a check for the input valid later
+  print("input a minSize(integer) for module detect:")
+  minSize<-scan("",what = integer(0),nlines = 1)
+  dynamicMods = cutreeDynamic(dendro = geneTree, distM = dissTOM,deepSplit = 2, pamRespectsDendro = FALSE,minClusterSize = minSize)
+  dynamicColors = labels2colors(dynamicMods)
+  print(class(dynamicColors))
 
-    MElist<-moduleEigengenes(eset,colors=dynamicColors)
-    MEs <- MElist$eigengenes
-    if(length(is.na(MEs$MEgrey))>0){
-      MEs$MEgrey<-NULL
-    }
-    MEDiss<-1-cor(MEs)
-    METree<-hclust(as.dist(MEDiss),method="average")
-    #Graphical the result
-    sizeGrWindow(7,6)
-    plot(METree,main="Clustering of module eigengenes(Normal)")
-    MEDissThres = 0.25
-    print("input a number to cut the tree(recommend 0.25):")
-    MEDissThres<-scan("",what = numeric(0),nlines = 1)
-    # Plot the cut line into the dendrogram
-    abline(h=MEDissThres, col = "red")
-    # Call an automatic merging function
-    merge = mergeCloseModules(eset, dynamicColors, cutHeight = MEDissThres, verbose = 3)
-    # The merged module colors
-    mergedColors = merge$colors;
-    # Eigengenes of the new merged modules:
-    #mergedMEs = merge$newMEs;
-    #绘制融合???(Dynamic Tree Cut)和融合后(Merged dynamic)的聚类图
-    #sizeGrWindow(12, 9)
-    #pdf(file = "Plots/geneDendro-3.pdf", wi = 9, he = 6)
-    plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors),
-                        c("Dynamic Tree Cut", "Merged dynamic"),
-                        dendroLabels = FALSE, hang = 0.03,
-                        addGuide = TRUE, guideHang = 0.05)
-    #dev.off()
-    # 只是绘制融合后聚类图
-    plotDendroAndColors(geneTree,mergedColors,"Merged dynamic",
-                        dendroLabels = FALSE, hang = 0.03,
-                        addGuide = TRUE, guideHang = 0.05)
-    #5.结果保存
-    # Rename to moduleColors
-    moduleColors = mergedColors
-  }else{
-    minSize=4
-    if(dim(eset)[2]/100>4){
-      minSize=dim(eset)[2]/100
-    }
-    dynamicMods = cutreeDynamic(dendro = geneTree, distM = dissTOM,deepSplit = 2, pamRespectsDendro = FALSE,minClusterSize = minSize)
-    dynamicColors = labels2colors(dynamicMods)
-    print(class(dynamicColors))
-
-    MElist<-moduleEigengenes(eset,colors=dynamicColors)
-    MEs <- MElist$eigengenes
-    if(length(is.na(MEs$MEgrey))>0){
-      MEs$MEgrey<-NULL
-    }
-    MEDiss<-1-cor(MEs)
-    METree<-hclust(as.dist(MEDiss),method="average")
-    MEDissThres=0.25
-    merge = mergeCloseModules(eset, dynamicColors, cutHeight = MEDissThres, verbose = 3)
-    # The merged module colors
-    moduleColors = merge$colors;
-    # Eigengenes of the new merged modules:
-    # mergedMEs = merge$newMEs;
-    # moduleColors = mergedColors
+  MElist<-moduleEigengenes(eset,colors=dynamicColors)
+  MEs <- MElist$eigengenes
+  if(length(is.na(MEs$MEgrey))>0){
+    MEs$MEgrey<-NULL
   }
+  MEDiss<-1-cor(MEs)
+  METree<-hclust(as.dist(MEDiss),method="average")
+  #Graphical the result
+  sizeGrWindow(7,6)
+  plot(METree,main="Clustering of module eigengenes(Normal)")
+  MEDissThres = 0.25
+  print("input a number to cut the tree(recommend 0.25):")
+  MEDissThres<-scan("",what = numeric(0),nlines = 1)
+  # Plot the cut line into the dendrogram
+  abline(h=MEDissThres, col = "red")
+  # Call an automatic merging function
+  merge = mergeCloseModules(eset, dynamicColors, cutHeight = MEDissThres, verbose = 3)
+  # The merged module colors
+  mergedColors = merge$colors;
+  # Eigengenes of the new merged modules:
+  mergedMEs = merge$newMEs;
+  #绘制融合???(Dynamic Tree Cut)和融合后(Merged dynamic)的聚类图
+  #sizeGrWindow(12, 9)
+  #pdf(file = "Plots/geneDendro-3.pdf", wi = 9, he = 6)
+  plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors),
+                      c("Dynamic Tree Cut", "Merged dynamic"),
+                      dendroLabels = FALSE, hang = 0.03,
+                      addGuide = TRUE, guideHang = 0.05)
+  #dev.off()
+  # 只是绘制融合后聚类图
+  plotDendroAndColors(geneTree,mergedColors,"Merged dynamic",
+                      dendroLabels = FALSE, hang = 0.03,
+                      addGuide = TRUE, guideHang = 0.05)
+  #5.结果保存
+  # Rename to moduleColors
+  moduleColors = mergedColors
   return(moduleColors)
 }
 #模块去冗余
@@ -649,14 +624,9 @@ removeWF<-function(data,label,remainNum=2){
     accs<-as.numeric(accs)
     remove_index=NULL
     remove_index<-which(accs==max(accs)) #那个去掉后，让整体性能提升最多的特征索引
-    if(length(remove_index)>0){
-      iter_f[count+1]<-colnames(data1)[remove_index[1]]
-      iter_acc[count+1]<-accs[remove_index[1]]
-      data1<-data1[,-remove_index[1]]
-    }else{
-      iter_f[count+1]<-"--"
-      iter_acc[count+1]<-0
-    }
+    iter_f[count+1]<-colnames(data1)[remove_index]
+    iter_acc[count+1]<-accs[remove_index]
+    data1<-data1[,-remove_index]
     len<-len-1
     iter[count+1]<-count
     count<-count+1
@@ -674,32 +644,44 @@ removeWF<-function(data,label,remainNum=2){
 }
 #eset行样本，列特征
 wgcnaPredict<-function(eset,label){
-  #eset<-prepareData(eset)
+  # eset<-prepareData(eset)
   eset2<-scale(eset)
   dissTOM<-1-cor(eset2)
   moduleColors<-moduleDetect(eset2,dissTOM)
   colors<-table(moduleColors)
   removeColors<-names(which(colors==1))
   colors<-setdiff(names(colors),removeColors)
-  #colors为eset子集，即模块表达谱
-  colors<-lapply(colors,function(x){x<-as.data.frame(eset[,which(moduleColors==x)])})
+  for(i in 1:length(colors)){
+    str<-paste0(colors[i],'<-as.data.frame(eset[,which(moduleColors=="',colors[i],'")])')
+    eval(parse(text=str))
+  }
   #获取各个模块和label的cor的降序基因名,命名为color_dec
-  colors_dec<-lapply(colors, function(x){
-    cor1<-cor(x,label)
-    cor1<-t(cor1)
-    cor1<-as.data.frame(cor1)
-    cor1<-sort(abs(cor1),decreasing = T)
-    cor1<-colnames(cor1)
-  })
+  for(i in 1:length(colors)){
+    str<-paste0('cor_',colors[i],'<-cor(',colors[i],',label)')
+    eval(parse(text=str))
+    str<-paste0('cor_',colors[i],'<-t(cor_',colors[i],')')
+    eval(parse(text=str))
+    str<-paste0('cor_',colors[i],'<-as.data.frame(cor_',colors[i],')')
+    eval(parse(text=str))
+    str<-paste0('cor_',colors[i],'<-sort(abs(cor_',colors[i],'),decreasing=T)')
+    eval(parse(text=str))
+    str<-paste0(colors[i],'_dec<-colnames(cor_',colors[i],')')
+    eval(parse(text=str))
+  }
   #将各个模块cor第一名放进去，颜色顺序与colors同
-  first<-lapply(colors_dec, function(x){x[1]})
+  first<-vector(length = length(colors),mode = "character")
+  for(i in 1:length(colors)){
+    #应该使用color_dec，以缩小范围，这里暂时全部遍历，不影响
+    str<-paste0('first[i]<-colnames(cor_',colors[i],')[1]')
+    eval(parse(text = str))
+  }
   #迭代替换基因
   print("Starting replace features in genelist ...")
-  genelist<-as.character(first)
+  genelist<-first
   for(i in 1:length(colors)){
-    genelist<-replaceGene(genelist,colors_dec[i],i,eset,label)
+    str<-paste0('genelist<-replaceGene(genelist,',colors[i],'_dec,i,eset,label)')
+    eval(parse(text = str))
   }
-  # genelist<-mapply(function(x,y){replaceGene(genelist,x,y,eset,label)},colors_dec,1:length(colors_dec))
   print("Starting remove least contribution feature ... ")
   result2<-removeWF(eset[,genelist],as.integer(label))
   return(result2)
@@ -728,13 +710,13 @@ replaceGene<-function(geneVector,color_dec,index,eset,label){
   return(geneVector)
 }
 #--------------------------------------------------------------------------
-addGene<-function(geneVector,color_dec,index,eset,label){
+addGene<-function(geneVector,color_dec,eset,label){
   colors_index<-match(geneVector,colnames(eset))
   colors<-moduleColors[colors_index]
   colors<-unique(colors)
   for(i in 1:length(colors)){
-    #str<-paste0('geneVector2<-unique(c(geneVector,',colors,'_dec[i]))')
-    str<-paste0('sapply(',colors[i],'_dec)')
+    str<-paste0('geneVector2<-unique(c(geneVector,',colors,'_dec[i]))')
+
 
   }
 
@@ -751,19 +733,23 @@ prepareData<-function(eset){
     if(length(missIndex)>0)
       eset<-eset[,-missIndex]
   }
+
   #去掉零方差--------------------------------------------------------------
   print("Removing features with zero variance...")
   zerovar<-nearZeroVar(eset)
   if(length(zerovar)>0)
     eset<-eset[,-zerovar]
+
   if(dim(eset)[2]<5000){return(eset)}
   eset <- eset[,order(apply(eset,2,mad), decreasing = T)[1:5000]]
+
   #去除多重共线基因--------------------------------------------------------
   descrCorr<-cor(eset)
   highCorr<-findCorrelation(descrCorr,0.9)
   if(length(highCorr)>0)
     eset<-eset[,-highCorr]
   comboInfo<-findLinearCombos(eset)
+  print("------------------------------------------11----")
   if(length(comboInfo$remove)>0)
     eset<-eset[,-comboInfo$remove]
   #离群样本
