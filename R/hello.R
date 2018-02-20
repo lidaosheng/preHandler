@@ -563,9 +563,7 @@ showCorPos<-function(eset,moduleColors,choose,label){
     str<-paste0(colors[i],'<-',substitute(eset),'[,which(moduleColors=="',colors[i],'")]')
     eval(parse(text=str))
   }
-  print(colors)
-  print('------------美丽的分割线--------------------')
-  print(ls())
+
   #获取各个模块和label的cor的降序基因名,命名为color_dec
   for(i in 1:length(colors)){
     print(paste(colors[i],"标记1"))
@@ -581,12 +579,14 @@ showCorPos<-function(eset,moduleColors,choose,label){
     eval(parse(text=str))
     print(ls(pattern = "cor_*"))
   }
-  print('-------------美丽分割线----------------')
-  print(ls(pattern = "cor_*"))
   #获得各个模块的cor排名
-  rank<-vector(length = length(choose),mode = "integer")
+  rank<-vector(length = length(choose),mode = "numeric")
   for(i in 1:length(choose)){
+    str<-paste0("len<-length(",choose_colors[i],"_dec)")
+    eval(parse(text=str))
     str<-paste0('rank[i]<-match("',choose[i],'",',choose_colors[i],'_dec)')
+    eval(parse(text=str))
+    str<-paste0('rank[i]<-rank[i]/len')
     eval(parse(text=str))
   }
   return(rank)
@@ -624,9 +624,9 @@ removeWF<-function(data,label,remainNum=2){
     accs<-as.numeric(accs)
     remove_index=NULL
     remove_index<-which(accs==max(accs)) #那个去掉后，让整体性能提升最多的特征索引
-    iter_f[count+1]<-colnames(data1)[remove_index]
-    iter_acc[count+1]<-accs[remove_index]
-    data1<-data1[,-remove_index]
+    iter_f[count+1]<-colnames(data1)[remove_index[1]]
+    iter_acc[count+1]<-accs[remove_index[1]]
+    data1<-data1[,-remove_index[1]]
     len<-len-1
     iter[count+1]<-count
     count<-count+1
@@ -709,18 +709,26 @@ replaceGene<-function(geneVector,color_dec,index,eset,label){
   acc<-trainModelNN(eset[,geneVector],as.factor(label))$result #记录初始精度
   return(geneVector)
 }
-#--------------------------------------------------------------------------
+#尝试添加某个模块中的每一个基因，看是否提升模型准确率0.5%以上
 addGene<-function(geneVector,color_dec,eset,label){
-  colors_index<-match(geneVector,colnames(eset))
-  colors<-moduleColors[colors_index]
-  colors<-unique(colors)
-  for(i in 1:length(colors)){
-    str<-paste0('geneVector2<-unique(c(geneVector,',colors,'_dec[i]))')
-
-
+  #初始的参考acc
+  acc<-trainModelNN(eset[,geneVector],label)$result
+  #添加color_dec中各个基因得到的accs
+  accs<-sapply(color_dec, function(x){
+    geneVector2<-c(geneVector,x)
+    acc2<-trainModelNN(eset[,geneVector2],label)$result
+  })
+  accs<-as.numeric(accs)
+  #如果accs中最大的大于acc,0.5%，那么找到那个基因，添加进去
+  if(max(accs)-acc>0.005){
+    index<-which(accs==max(accs))
+    geneVector<-c(geneVector,color_dec[index[1]])
+    print(paste("添加了一个基因，模型精度为：",max(accs)))
   }
-
+  return(geneVector)
 }
+
+
 #准备工作，数据清理，降维度
 #eset行样本，列特征
 #label为样本标签，integer格式
