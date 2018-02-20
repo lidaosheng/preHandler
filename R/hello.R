@@ -131,11 +131,11 @@ comGenesEsets<-function(esetList){
       ifelse(len==1,
              return(esetList),
              {name<-lapply(esetList,function(x){colnames(x)})
-              commGene<-name[[1]]
-              for(i in 2:len){commGene<-intersect(commGene,name[[i]])} #get common genes between each eset
-              esetlist2<-lapply(esetList,function(x){x[,commGene]}) #only keep commGene for each member of esetList
-              rm(esetList,commGene,name,len)
-              return(esetlist2)
+             commGene<-name[[1]]
+             for(i in 2:len){commGene<-intersect(commGene,name[[i]])} #get common genes between each eset
+             esetlist2<-lapply(esetList,function(x){x[,commGene]}) #only keep commGene for each member of esetList
+             rm(esetList,commGene,name,len)
+             return(esetlist2)
              }
       )
     }
@@ -180,21 +180,21 @@ removeOutliers<-function(eset,label){
       { print("please input the index of cluster to delete, press enter to complete:")
         removeClust<-scan("",what=integer(0),nlines = length(table(clust)))
         ifelse(
-               #there is a bug to fix
-               all(removeClust%in%c(0:length(table(clust))))==TRUE&length(removeClust)!=0,
-               #表达式拼???
-               {eps<-sapply(removeClust,function(x){paste("clust==",x,sep="")})
-                eps<-parse(text=paste(eps,"",sep = "",collapse = "|"))
-                removeSample<-eval(eps)
-                rm(eps)
-                again=FALSE},
-               {print("some index is valid or empty input,please input again..")
-                again=TRUE}
-         )
+          #there is a bug to fix
+          all(removeClust%in%c(0:length(table(clust))))==TRUE&length(removeClust)!=0,
+          #表达式拼???
+          {eps<-sapply(removeClust,function(x){paste("clust==",x,sep="")})
+          eps<-parse(text=paste(eps,"",sep = "",collapse = "|"))
+          removeSample<-eval(eps)
+          rm(eps)
+          again=FALSE},
+          {print("some index is valid or empty input,please input again..")
+            again=TRUE}
+        )
       },
       error=function(e){print("输入有误，请重新输入...");again=TRUE},
       finally={}
-     )
+    )
 
   }
   eset2<-eset[-which(removeSample),]
@@ -684,7 +684,7 @@ wgcnaPredict<-function(eset,label){
   #colors为eset子集，即模块表达谱
   colors<-lapply(colors,function(x){x<-as.data.frame(eset[,which(moduleColors==x)])})
   #获取各个模块和label的cor的降序基因名,命名为color_dec
-  colors_dec<-sapply(colors, function(x){
+  colors_dec<-lapply(colors, function(x){
     cor1<-cor(x,label)
     cor1<-t(cor1)
     cor1<-as.data.frame(cor1)
@@ -692,7 +692,7 @@ wgcnaPredict<-function(eset,label){
     cor1<-colnames(cor1)
   })
   #将各个模块cor第一名放进去，颜色顺序与colors同
-  first<-sapply(colors_dec, function(x){x[1]})
+  first<-lapply(colors_dec, function(x){x[1]})
   #迭代替换基因
   print("Starting replace features in genelist ...")
   genelist<-as.character(first)
@@ -756,9 +756,8 @@ prepareData<-function(eset){
   zerovar<-nearZeroVar(eset)
   if(length(zerovar)>0)
     eset<-eset[,-zerovar]
-  if(dim(eset)[2]>5000){
-    eset <- eset[,order(apply(eset,2,mad), decreasing = T)[1:5000]]
-  }
+  if(dim(eset)[2]<5000){return(eset)}
+  eset <- eset[,order(apply(eset,2,mad), decreasing = T)[1:5000]]
   #去除多重共线基因--------------------------------------------------------
   descrCorr<-cor(eset)
   highCorr<-findCorrelation(descrCorr,0.9)
