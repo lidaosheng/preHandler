@@ -165,7 +165,7 @@ showCorPos<-function(eset,moduleColors,choose,label){
   choose_colors<-moduleColors[indexes]
   #获得各个模块表达谱子集,命名为color
   for(i in 1:length(colors)){
-    str<-paste0(colors[i],'<-',substitute(eset),'[,which(moduleColors=="',colors[i],'")]')
+    str<-paste0(colors[i],'<-eset[,which(moduleColors=="',colors[i],'")]')
     eval(parse(text=str))
   }
   #获取各个模块和label的cor的降序基因名,命名为color_dec
@@ -274,7 +274,7 @@ wgcnaPredict<-function(eset,label){
 
   #迭代替换基因
   print("Starting replace features in genelist ...")
-  first<-replaceGene(first,colors_dec,eset,label)
+  first<-replaceGene(first,colors_dec,eset,label,TRUE,0.98)
 
   print("Starting remove least contribution feature ... ")
   result2<-removeWF(eset[,first],label)
@@ -285,7 +285,7 @@ wgcnaPredict<-function(eset,label){
 #replace geneVector genes with gene in coresponding module,to reach the highest predict score
 #first 由各个colors_dec第一个元素组成的基因列表
 #colors_dec 某个模块基因降序排列（与label的cor）
-replaceGene<-function(first,colors_dec,eset,label){
+replaceGene<-function(first,colors_dec,eset,label,fast=FALSE,end=0.98){
   #----------------------------------------------------
   cl.cores <- detectCores()
   cl <- makeCluster(cl.cores)
@@ -301,9 +301,12 @@ replaceGene<-function(first,colors_dec,eset,label){
       genelist[i]<-x
       acc2<-trainModelNN(eset[,genelist],as.factor(label))
     })
+
     if(max(accs)>acc){
       max_index<-1+which(accs==max(accs))[1]
       genelist[i]<-colors_dec[[i]][max_index]
+      if(fast==TRUE&&max(accs)>end)
+        break
     }
   }
   #-----------------------------------------------
