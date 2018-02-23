@@ -170,7 +170,6 @@ showCorPos<-function(eset,moduleColors,choose,label){
   }
   #获取各个模块和label的cor的降序基因名,命名为color_dec
   for(i in 1:length(colors)){
-    print(paste(colors[i],"标记1"))
     str<-paste0('cor_',colors[i],'<-cor(',colors[i],',label)')
     eval(parse(text=str))
     str<-paste0('cor_',colors[i],'<-t(cor_',colors[i],')')
@@ -181,15 +180,19 @@ showCorPos<-function(eset,moduleColors,choose,label){
     eval(parse(text=str))
     str<-paste0(colors[i],'_dec<-colnames(cor_',colors[i],')')
     eval(parse(text=str))
-    print(ls(pattern = "cor_*"))
   }
   #获得各个模块的cor排名
   rank<-vector(length = length(choose),mode = "integer")
+  ranks<-vector(length = length(choose),mode = "character")
   for(i in 1:length(choose)){
     str<-paste0('rank[i]<-match("',choose[i],'",',choose_colors[i],'_dec)')
     eval(parse(text=str))
+    str<-paste0('len<-length(',choose_colors[i],'_dec)')
+    eval(parse(text = str))
+    str<-paste0(rank[i],'/',len)
+    ranks[i]<-str
   }
-  return(rank)
+  return(ranks)
 
 }
 
@@ -330,7 +333,7 @@ addGene<-function(geneVector,colors_dec,index,eset,label){
 #准备工作，数据清理，降维度
 #eset行样本，列特征
 #label为样本标签，integer格式
-prepareData<-function(eset){
+prepareData<-function(eset,label){
   #去掉缺失值--------------------------------------------------------------
   print("Removing feature with missing value...")
   if(length(is.na(eset))>0){
@@ -346,17 +349,19 @@ prepareData<-function(eset){
   if(length(zerovar)>0)
     eset<-eset[,-zerovar]
 
-  if(dim(eset)[2]<4000){return(eset)}
-  eset <- eset[,order(apply(eset,2,mad), decreasing = T)[1:4000]]
+  # if(dim(eset)[2]<4000){return(eset)}
+  # eset <- eset[,order(apply(eset,2,mad), decreasing = T)[1:4000]]
 
-  #去除多重共线基因--------------------------------------------------------
+  #高相关过滤--------------------------------------------------------
   descrCorr<-cor(eset)
   highCorr<-findCorrelation(descrCorr,0.9)
   if(length(highCorr)>0)
     eset<-eset[,-highCorr]
-  comboInfo<-findLinearCombos(eset)
-  if(length(comboInfo$remove)>0)
-    eset<-eset[,-comboInfo$remove]
+  #t-test
+  p.value.all.genes = apply(eset,2,function(x){t.test(x[which(label==1)],x[which(label==0)])$p.value})
+  result.t_test<-subset(p.value.all.genes,p.value.all.genes<0.5)
+  print(length(result.t_test))
+  eset<-eset[,result.t_test]
   #离群样本
   #e_l<-removeOutliers(eset,label)
   return(eset)
