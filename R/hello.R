@@ -343,7 +343,7 @@ prepareData<-function(eset,label){
       eset<-eset[,-missIndex]
   }
 
-  #去掉零方差--------------------------------------------------------------
+  #去掉零方差------ --------------------------------------------------------
   print("Removing features with zero variance...")
   zerovar<-nearZeroVar(eset)
   if(length(zerovar)>0)
