@@ -116,6 +116,7 @@ moduleDetect<-function(eset,dissTOM){
 
 #返回训练好的神经网络（实际是最后一折的）,以及十折交叉验证准确率
 trainModelNN<-function(eset,label){
+  set.seed(100)
   eset<- as.data.frame(eset)
   label<-as.factor(label)
   maxs<-apply(eset,2,max)
@@ -345,7 +346,8 @@ prepareData<-function(eset,label){
 
   #去掉零方差------ --------------------------------------------------------
   print("Removing features with zero variance...")
-  zerovar<-nearZeroVar(eset)
+  eset_p<-scale(eset)
+  zerovar<-nearZeroVar(eset_p)
   if(length(zerovar)>0)
     eset<-eset[,-zerovar]
 
@@ -353,15 +355,15 @@ prepareData<-function(eset,label){
   # eset <- eset[,order(apply(eset,2,mad), decreasing = T)[1:4000]]
 
   #高相关过滤--------------------------------------------------------
-  descrCorr<-cor(eset)
+  eset_p<-scale(eset)
+  descrCorr<-cor(eset_p)
   highCorr<-findCorrelation(descrCorr,0.9)
   if(length(highCorr)>0)
     eset<-eset[,-highCorr]
   #t-test
   p.value.all.genes = apply(eset,2,function(x){t.test(x[which(label==1)],x[which(label==0)])$p.value})
   result.t_test<-subset(p.value.all.genes,p.value.all.genes<0.5)
-  print(length(result.t_test))
-  eset<-eset[,result.t_test]
+  eset<-eset[,names(result.t_test)]
   #离群样本
   #e_l<-removeOutliers(eset,label)
   return(eset)
