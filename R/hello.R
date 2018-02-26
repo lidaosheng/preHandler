@@ -334,7 +334,7 @@ addGene<-function(geneVector,colors_dec,index,eset,label){
 #准备工作，数据清理，降维度
 #eset行样本，列特征
 #label为样本标签，integer格式
-prepareData<-function(eset,label){
+prepareData<-function(eset,label,highcor=0.9,pvalue=0.5){
   #去掉缺失值--------------------------------------------------------------
   print("Removing feature with missing value...")
   if(length(is.na(eset))>0){
@@ -351,18 +351,18 @@ prepareData<-function(eset,label){
   if(length(zerovar)>0)
     eset<-eset[,-zerovar]
 
-  # if(dim(eset)[2]<4000){return(eset)}
-  # eset <- eset[,order(apply(eset,2,mad), decreasing = T)[1:4000]]
+  if(dim(eset)[2]<4000){return(eset)}
+  eset <- eset[,order(apply(eset,2,mad), decreasing = T)[1:4000]]
 
   #高相关过滤--------------------------------------------------------
   eset_p<-scale(eset)
   descrCorr<-cor(eset_p)
-  highCorr<-findCorrelation(descrCorr,0.9)
+  highCorr<-findCorrelation(descrCorr,highcor)
   if(length(highCorr)>0)
     eset<-eset[,-highCorr]
   #t-test
   p.value.all.genes = apply(eset,2,function(x){t.test(x[which(label==1)],x[which(label==0)])$p.value})
-  result.t_test<-subset(p.value.all.genes,p.value.all.genes<0.5)
+  result.t_test<-subset(p.value.all.genes,p.value.all.genes<pvalue)
   eset<-eset[,names(result.t_test)]
   #离群样本
   #e_l<-removeOutliers(eset,label)
