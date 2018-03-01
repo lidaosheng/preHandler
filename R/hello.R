@@ -252,7 +252,7 @@ removeWF<-function(data,label,remainNum=2){
 }
 #eset行样本，列特征
 wgcnaPredict<-function(eset,label){
-
+  eset<-prepareData(eset,label)
   eset2<-scale(eset)#eset2是标准化的eset,仅用于聚类
   dissTOM<-1-cor(eset2)#相似矩阵化为相异矩阵，用于层次聚类
   moduleColors<-moduleDetect(eset2,dissTOM)#获取簇
@@ -290,13 +290,10 @@ wgcnaPredict<-function(eset,label){
 #first 由各个colors_dec第一个元素组成的基因列表
 #colors_dec 某个模块基因降序排列（与label的cor）
 replaceGene<-function(first,colors_dec,eset,label,fast=FALSE,end=0.98){
-  #----------------------------------------------------
   cl.cores <- detectCores()
   cl <- makeCluster(cl.cores)
   clusterEvalQ(cl,library(caret))
   clusterEvalQ(cl,library(nnet))
-
-  #----------------------------------------------------
   genelist<-as.character(first)
   for(i in 1:length(genelist)){
     if(length(colors_dec[[i]])==1){next}
@@ -313,9 +310,7 @@ replaceGene<-function(first,colors_dec,eset,label,fast=FALSE,end=0.98){
         break
     }
   }
-  #-----------------------------------------------
   stopCluster(cl)
-  #-----------------------------------------------
   first<-genelist
   return(first)
 }
@@ -334,7 +329,11 @@ addGene<-function(geneVector,colors_dec,index,eset,label){
 #准备工作，数据清理，降维度
 #eset行样本，列特征
 #label为样本标签，integer格式
+<<<<<<< HEAD
 prepareData<-function(eset,label,highcor=0.9,pvalue=0.5){
+=======
+prepareData<-function(eset,label,cor1=0.85,pvalue=0.01){
+>>>>>>> d45b70c504ba51b2a3c4e76ae63091c2b992a508
   #去掉缺失值--------------------------------------------------------------
   print("Removing feature with missing value...")
   if(length(is.na(eset))>0){
@@ -357,7 +356,11 @@ prepareData<-function(eset,label,highcor=0.9,pvalue=0.5){
   #高相关过滤--------------------------------------------------------
   eset_p<-scale(eset)
   descrCorr<-cor(eset_p)
+<<<<<<< HEAD
   highCorr<-findCorrelation(descrCorr,highcor)
+=======
+  highCorr<-findCorrelation(descrCorr,cor1)
+>>>>>>> d45b70c504ba51b2a3c4e76ae63091c2b992a508
   if(length(highCorr)>0)
     eset<-eset[,-highCorr]
   #t-test
