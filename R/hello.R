@@ -329,11 +329,7 @@ addGene<-function(geneVector,colors_dec,index,eset,label){
 #准备工作，数据清理，降维度
 #eset行样本，列特征
 #label为样本标签，integer格式
-<<<<<<< HEAD
-prepareData<-function(eset,label,highcor=0.9,pvalue=0.5){
-=======
 prepareData<-function(eset,label,cor1=0.85,pvalue=0.01){
->>>>>>> d45b70c504ba51b2a3c4e76ae63091c2b992a508
   #去掉缺失值--------------------------------------------------------------
   print("Removing feature with missing value...")
   if(length(is.na(eset))>0){
@@ -356,11 +352,7 @@ prepareData<-function(eset,label,cor1=0.85,pvalue=0.01){
   #高相关过滤--------------------------------------------------------
   eset_p<-scale(eset)
   descrCorr<-cor(eset_p)
-<<<<<<< HEAD
-  highCorr<-findCorrelation(descrCorr,highcor)
-=======
   highCorr<-findCorrelation(descrCorr,cor1)
->>>>>>> d45b70c504ba51b2a3c4e76ae63091c2b992a508
   if(length(highCorr)>0)
     eset<-eset[,-highCorr]
   #t-test
