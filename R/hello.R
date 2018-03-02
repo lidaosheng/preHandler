@@ -113,9 +113,17 @@ moduleDetect<-function(eset,dissTOM){
   return(moduleColors)
 }
 
-
-#返回训练好的神经网络（实际是最后一折的）,以及十折交叉验证准确率
-trainModelNN<-function(eset,label){
+#返回训练好的moxing（实际是最后一折的）,以及十折交叉验证准确率
+trainModel<-function(eset,label,model="NN"){
+  if(model=="NN"){
+    str = "nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200,trace=F)"
+    str2 = "acc <- getAcc(testset$label,predict)"
+  }else if(model=="NB"){
+    str = "nn <- NaiveBayes(label ~ .,data = trainset)"
+    str2 = "acc <- getAcc(testset$label,predict$class)"
+  }else{
+    stop("参数model只能取值NN,NB..")
+  }
   set.seed(100)
   eset<- as.data.frame(eset)
   label<-as.factor(label)
@@ -135,9 +143,11 @@ trainModelNN<-function(eset,label){
       trainset<-data[-x,]
       testset<-data[x,]
       #训练网络
-      nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200,trace=F)
+      # nn <- NaiveBayes(label ~ .,data = trainset)
+      eval(parse(text=str))
       predict <- predict(nn,testset,type = "class")
-      acc <- getAcc(testset$label,predict)
+      # acc <- getAcc(testset$label,predict$class)
+      eval(parse(text=str2))
     })
     mean(result1)
   })
@@ -199,7 +209,7 @@ showCorPos<-function(eset,moduleColors,choose,label){
 
 #去冗余，每次去掉一个最差的特征
 #终止条件：连续下降3次，或者单次下降2百分点
-removeWF<-function(data,label,remainNum=2){
+removeWF<-function(data,label,remainNum=2,model="NN"){
   #记录每次迭代次数，精度，去掉的特征
   len = ncol(data)-remainNum+1 #剩余迭代剩余次数+1
   iter = vector(mode = "integer",length = len)
@@ -210,7 +220,7 @@ removeWF<-function(data,label,remainNum=2){
   count = 1
   isStop = 0
   #初次没有删除元素，但是也要记录
-  acc<-trainModelNN(data1,as.factor(label)) #记录初始精度
+  acc<-trainModel(data1,as.factor(label),model) #记录初始精度
   iter[1]=0
   iter_f[1]="--"
   iter_acc[1]=acc
@@ -219,12 +229,13 @@ removeWF<-function(data,label,remainNum=2){
   cl <- makeCluster(cl.cores)
   clusterEvalQ(cl,library(caret))
   clusterEvalQ(cl,library(nnet))
+  clusterEvalQ(cl,library(klaR))
   #-----------------------------------------------------------------
   while(len>1&&ncol(data1)>1){ #如果没有终止，一直迭代到剩下remainNum个特征
     accs<-parSapply(cl,1:ncol(data1),function(x){
       # accs<-sapply(1:ncol(data1),function(x){
       data2<-data1[,-x]
-      acc_t<-trainModelNN(data2,as.factor(label))
+      acc_t<-trainModel(data2,as.factor(label),model)
     })
     #得到准确率提升最大的
     accs<-as.numeric(accs)
@@ -251,7 +262,7 @@ removeWF<-function(data,label,remainNum=2){
   return(result)
 }
 #eset行样本，列特征
-wgcnaPredict<-function(eset,label){
+wgcnaPredict<-function(eset,label,stop_acc=1,model="NN"){
   eset<-prepareData(eset,label)
   eset2<-scale(eset)#eset2是标准化的eset,仅用于聚类
   dissTOM<-1-cor(eset2)#相似矩阵化为相异矩阵，用于层次聚类
@@ -278,10 +289,10 @@ wgcnaPredict<-function(eset,label){
 
   #迭代替换基因
   print("Starting replace features in genelist ...")
-  first<-replaceGene(first,colors_dec,eset,label,TRUE,0.98)
+  first<-replaceGene(first,colors_dec,eset,label,stop_acc,model)
 
   print("Starting remove least contribution feature ... ")
-  result2<-removeWF(eset[,first],label)
+  result2<-removeWF(eset[,first],label,model=model)
   # stopCluster(c1)
   return(result2)
 }
@@ -289,24 +300,28 @@ wgcnaPredict<-function(eset,label){
 #replace geneVector genes with gene in coresponding module,to reach the highest predict score
 #first 由各个colors_dec第一个元素组成的基因列表
 #colors_dec 某个模块基因降序排列（与label的cor）
-replaceGene<-function(first,colors_dec,eset,label,fast=FALSE,end=0.98){
+#fast
+replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN"){
+  print(paste("end---------:",end))
   cl.cores <- detectCores()
   cl <- makeCluster(cl.cores)
   clusterEvalQ(cl,library(caret))
   clusterEvalQ(cl,library(nnet))
+  clusterEvalQ(cl,library(klaR))
   genelist<-as.character(first)
   for(i in 1:length(genelist)){
     if(length(colors_dec[[i]])==1){next}
-    acc<-trainModelNN(eset[,genelist],as.factor(label)) #记录初始精度
+    acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
     accs<-parSapply(cl,colors_dec[[i]][-1],function(x){
       genelist[i]<-x
-      acc2<-trainModelNN(eset[,genelist],as.factor(label))
+      acc2<-trainModel(eset[,genelist],as.factor(label),model)
     })
 
     if(max(accs)>acc){
       max_index<-1+which(accs==max(accs))[1]
       genelist[i]<-colors_dec[[i]][max_index]
-      if(fast==TRUE&&max(accs)>end)
+      #if the max acc bigger than end,stop the loop
+      if(max(accs)>=end)
         break
     }
   }
