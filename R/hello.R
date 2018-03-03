@@ -20,7 +20,6 @@ getData<-function(path,destdir){
     if(length(files_name_gz)==0){
       next
     }
-    print(paste("----",files_name_gz,"---",fd,"-------------"))
     mydata<-read.table(gzfile(paste(path,'/',fd,'/',files_name_gz,sep = "")))
     #列名
     names(mydata)<-c("ENSG_ID",fd)
@@ -292,8 +291,8 @@ removeWF<-function(data,label,remainNum=2,model="NN"){
   return(result)
 }
 #eset行样本，列特征
-wgcnaPredict<-function(eset,label,stop_acc=1,model="NN"){
-  eset<-prepareData(eset,label)
+wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85){
+  eset<-prepareData(eset,label,cor1)
   eset2<-scale(eset)#eset2是标准化的eset,仅用于聚类
   dissTOM<-1-cor(eset2)#相似矩阵化为相异矩阵，用于层次聚类
   moduleColors<-moduleDetect(eset2,dissTOM)#获取簇
@@ -332,11 +331,6 @@ wgcnaPredict<-function(eset,label,stop_acc=1,model="NN"){
 #colors_dec 某个模块基因降序排列（与label的cor）
 #fast
 replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN"){
-  print(length(colors_dec))
-  for(i in colors_dec){
-    print("---------------")
-    print(length(i))
-  }
   cl.cores <- detectCores()
   cl <- makeCluster(cl.cores)
   clusterEvalQ(cl,library(caret))
@@ -365,12 +359,13 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN"){
 }
 #--------------------------------------------------------------------------
 addGene<-function(geneVector,colors_dec,index,eset,label){
-  colors_index<-match(geneVector,colnames(eset))
-  colors<-moduleColors[colors_index]
-  colors<-unique(colors)
-  for(i in 1:length(colors)){
-    #str<-paste0('geneVector2<-unique(c(geneVector,',colors,'_dec[i]))')
-    str<-paste0('sapply(',colors[i],'_dec)')
+  for(i in 1:length(colors_dec)){
+    geneVector1<-c(geneVector,co)
+    sapply(colors_dec[i], function(x){
+      geneVector1<-unique(c(x,geneVector))
+
+    })
+
 
   }
 
@@ -378,7 +373,7 @@ addGene<-function(geneVector,colors_dec,index,eset,label){
 #准备工作，数据清理，降维度
 #eset行样本，列特征
 #label为样本标签，integer格式
-prepareData<-function(eset,label,cor1=0.85,pvalue=0.01){
+prepareData<-function(eset,label,cor1=0.85){
   #去掉缺失值--------------------------------------------------------------
   print("Removing feature with missing value...")
   if(length(is.na(eset))>0){
@@ -406,7 +401,13 @@ prepareData<-function(eset,label,cor1=0.85,pvalue=0.01){
     eset<-eset[,-highCorr]
   #t-test
   p.value.all.genes = apply(eset,2,function(x){t.test(x[which(label==1)],x[which(label==0)])$p.value})
-  result.t_test<-subset(p.value.all.genes,p.value.all.genes<pvalue)
+  result.t_test<-subset(p.value.all.genes,p.value.all.genes<0.01)
+  if(length(result.t_test)<500){
+    result.t_test<-subset(p.value.all.genes,p.value.all.genes<0.5)
+    if(length(result.t_test)<500){
+      result.t_test<-p.value.all.genes
+    }
+  }
   eset<-eset[,names(result.t_test)]
   #离群样本
   #e_l<-removeOutliers(eset,label)
