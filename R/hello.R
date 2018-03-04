@@ -322,8 +322,10 @@ wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85){
 
   print("Starting remove least contribution feature ... ")
   result2<-removeWF(eset[,first],label,model=model)
-  # stopCluster(c1)
-  return(result2)
+  #用于测试目标基因在模块中的位置
+  pos<-showCorPos(eset,moduleColors,result2$genelist,label)
+  li <- list(result=result2,pos=pos)
+  return(li)
 }
 
 #replace geneVector genes with gene in coresponding module,to reach the highest predict score
