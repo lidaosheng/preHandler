@@ -302,7 +302,6 @@ wgcnaPredict<-function(eset,label,stop_acc=1,model="NN"){
 #colors_dec 某个模块基因降序排列（与label的cor）
 #fast
 replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN"){
-  print(paste("end---------:",end))
   cl.cores <- detectCores()
   cl <- makeCluster(cl.cores)
   clusterEvalQ(cl,library(caret))
