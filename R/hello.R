@@ -339,20 +339,22 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN"){
   clusterEvalQ(cl,library(nnet))
   clusterEvalQ(cl,library(klaR))
   genelist<-as.character(first)
+  acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
   for(i in 1:length(genelist)){
     if(length(colors_dec[[i]])==1){next}
-    acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
+    # acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
+    #if the max acc bigger than end,stop the loop
+    if(acc>=end)
+      break
     accs<-parSapply(cl,colors_dec[[i]][-1],function(x){
       genelist[i]<-x
       acc2<-trainModel(eset[,genelist],as.factor(label),model)
     })
-
+    #acc提升，替换
     if(max(accs)>acc){
       max_index<-1+which(accs==max(accs))[1]
       genelist[i]<-colors_dec[[i]][max_index]
-      #if the max acc bigger than end,stop the loop
-      if(max(accs)>=end)
-        break
+      acc<-max(accs)
     }
   }
   stopCluster(cl)
