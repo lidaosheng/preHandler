@@ -1,33 +1,3 @@
-getData<-function(path,destdir){
-  folders<-list.files(path)
-  GBM_fpkm<-data.frame()
-  #整合数据
-  fd1<-folders[1]
-  files_name<-list.files(paste(path,"/",fd1,sep = ""))
-  files_name_gz<-files_name[grepl('.FPKM.txt',files_name)]
-  if(length(files_name_gz)!=0){
-    mydata<-read.table(gzfile(paste(path,'/',fd1,'/',files_name_gz,sep = "")))
-    #列名
-    names(mydata)<-c("ENSG_ID",fd1)
-    GBM_fpkm<-mydata
-  }
-
-
-  for(fd in folders[2:length(folders)]){
-    #解压文件
-    files_name<-list.files(paste(path,"/",fd,sep = ""))
-    files_name_gz<-files_name[grepl('.FPKM.txt',files_name)]
-    if(length(files_name_gz)==0){
-      next
-    }
-    mydata<-read.table(gzfile(paste(path,'/',fd,'/',files_name_gz,sep = "")))
-    #列名
-    names(mydata)<-c("ENSG_ID",fd)
-    GBM_fpkm<-merge(GBM_fpkm,mydata,"ENSG_ID")
-  }
-  write.csv(GBM_fpkm,file = paste0(destdir,"/GBM_FPKM.csv"),row.names = FALSE)
-}
-
 #将csv文件读取并处理后返回结果,行样本，列基???
 csvToEset<-function(fileDir){
   eset<-read.csv(fileDir,header = TRUE)
