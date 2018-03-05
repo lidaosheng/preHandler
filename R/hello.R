@@ -12,33 +12,6 @@ csvToEset<-function(fileDir){
   return(eset)
 }
 
-#turn esets that genes between which are different to same
-comGenesEsets<-function(esetList){
-  len=length(esetList)
-  ifelse(
-    len==0,
-    stop("esetList is empty!"),
-    {
-      ifelse(len==1,
-             return(esetList),
-             {name<-lapply(esetList,function(x){colnames(x)})
-             commGene<-name[[1]]
-             for(i in 2:len){commGene<-intersect(commGene,name[[i]])} #get common genes between each eset
-             esetlist2<-lapply(esetList,function(x){x[,commGene]}) #only keep commGene for each member of esetList
-             rm(esetList,commGene,name,len)
-             return(esetlist2)
-             }
-      )
-    }
-  )
-
-}
-reduceGeneNum<-function(eset){
-  if(dim(eset)[2]<5000){return(eset)}
-  eset <- eset[,order(apply(eset,2,mad), decreasing = T)[1:5000]]
-  return(eset)
-}
-
 #remove the outliers and return the remain samples and labels
 removeOutliers<-function(eset,label){
   sampleTree<-hclust(dist(eset),method="average")
