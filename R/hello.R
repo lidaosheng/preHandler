@@ -117,7 +117,7 @@ trainModel<-function(eset,label,model="NN"){
       #训练网络
       # nn <- NaiveBayes(label ~ .,data = trainset)
       eval(parse(text=str))
-      predict <- predict(nn,testset,type = "class")
+      predict <- predict(nn,testset[,-ncol(testset)],type = "class")
       # acc <- getAcc(testset$label,predict$class)
       eval(parse(text=str2))
     })
