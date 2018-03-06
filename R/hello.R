@@ -85,6 +85,52 @@ moduleDetect<-function(eset,dissTOM){
   return(moduleColors)
 }
 
+#返回训练好的神经网络（实际是最后一折的）,以及十折交叉验证准确率
+trainModelNN<-function(eset,label){
+  set.seed(100)
+  eset<- as.data.frame(eset)
+  label<-as.factor(label)
+  maxs<-apply(eset,2,max)
+  mins<-apply(eset,2,min)
+  eset<-as.data.frame(scale(eset,center=mins,scale=maxs-mins))
+  rm(mins,maxs)
+  data<-cbind(eset,label=label)
+  #十次
+  #-----------------------------------------------------
+  #----------------------------------------------------
+  result<-sapply(1:10,function(x){
+    #十折交叉
+    folds<-createFolds(y=data$label,k=10)
+    result1<-sapply(folds,function(x){
+      #每次先选好训练集和测试集
+      trainset<-data[-x,]
+      testset<-data[x,]
+      #训练网络
+      nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200,trace=F)
+      predict <- predict(nn,testset[,-ncol(testset)],type = "class")
+      acc <- getAcc(testset$label,predict)
+      # nn <- NaiveBayes(label ~ .,data = trainset)
+      # predict <- predict(nn,testset[,-ncol(testset)],type = "class")
+      # acc <- getAcc(testset$label,predict$class)
+    })
+    mean(result1)
+  })
+  print("十次十折交叉验证：")
+  print(mean(result))
+  # list1<-list(result=mean(result),nn=nn)
+  return(mean(result))
+}
+#二分类，获取acc
+getAcc<-function(label,predict){
+  nt <- table(label,predict)
+  acc<-0
+  if(length(colnames(nt))==1){
+    acc<-(table(label,predict)[colnames(table(label,predict)),colnames(table(label,predict))])/length(label)
+    return(acc)
+  }
+  acc <- (nt[1,1]+nt[2,2])/(length(label))
+  return(acc)
+}
 #返回训练好的moxing（实际是最后一折的）,以及十折交叉验证准确率
 trainModel<-function(eset,label,model="NN"){
   if(model=="NN"){
@@ -115,11 +161,14 @@ trainModel<-function(eset,label,model="NN"){
       trainset<-data[-x,]
       testset<-data[x,]
       #训练网络
-      # nn <- NaiveBayes(label ~ .,data = trainset)
-      eval(parse(text=str))
+      nn <- NaiveBayes(label ~ .,data = trainset)
+      print("检查员1----------")
+      # eval(parse(text=str))
       predict <- predict(nn,testset,type = "class")
-      # acc <- getAcc(testset$label,predict$class)
-      eval(parse(text=str2))
+      print("检查员2----------")
+      acc <- getAcc(testset$label,predict$class)
+      print("检查员3----------")
+      # eval(parse(text=str2))
     })
     mean(result1)
   })
@@ -137,6 +186,7 @@ getAcc<-function(label,predict){
     return(acc)
   }
   acc <- (nt[1,1]+nt[2,2])/(length(label))
+  # accuracy <- sum(diag(frek))/sum(frek)
   return(acc)
 }
 
@@ -192,7 +242,8 @@ removeWF<-function(data,label,remainNum=2,model="NN"){
   count = 1
   isStop = 0
   #初次没有删除元素，但是也要记录
-  acc<-trainModel(data1,as.factor(label),model) #记录初始精度
+  # acc<-trainModel(data1,as.factor(label),model) #记录初始精度
+  acc<-trainModelNN(data1,as.factor(label))
   iter[1]=0
   iter_f[1]="--"
   iter_acc[1]=acc
@@ -207,7 +258,8 @@ removeWF<-function(data,label,remainNum=2,model="NN"){
     accs<-parSapply(cl,1:ncol(data1),function(x){
       # accs<-sapply(1:ncol(data1),function(x){
       data2<-data1[,-x]
-      acc_t<-trainModel(data2,as.factor(label),model)
+      # acc_t<-trainModel(data2,as.factor(label),model)
+      acc_t<-trainModelNN(data2,as.factor(label))
     })
     #得到准确率提升最大的
     accs<-as.numeric(accs)
@@ -282,7 +334,8 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN"){
   clusterEvalQ(cl,library(nnet))
   clusterEvalQ(cl,library(klaR))
   genelist<-as.character(first)
-  acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
+  # acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
+  acc<-trainModelNN(eset[,genelist],as.factor(label)) #记录初始精度
   for(i in 1:length(genelist)){
     if(length(colors_dec[[i]])==1){next}
     # acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
@@ -291,7 +344,8 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN"){
       break
     accs<-parSapply(cl,colors_dec[[i]][-1],function(x){
       genelist[i]<-x
-      acc2<-trainModel(eset[,genelist],as.factor(label),model)
+      # acc2<-trainModel(eset[,genelist],as.factor(label),model)
+      acc2<-trainModelNN(eset[,genelist],as.factor(label))
     })
     #acc提升，替换
     if(max(accs)>acc){
