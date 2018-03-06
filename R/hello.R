@@ -88,11 +88,15 @@ moduleDetect<-function(eset,dissTOM){
 #返回训练好的moxing（实际是最后一折的）,以及十折交叉验证准确率
 trainModel<-function(eset,label,model="NN"){
   if(model=="NN"){
-    str = "nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 200,trace=F)"
+    str = "nn <- nnet(label ~ .,data = trainset,size = 2)"
+    #,rang = 0.1,decay = 5e-4,maxit = 200,trace=F
     str2 = "acc <- getAcc(testset$label,predict)"
   }else if(model=="NB"){
-    str = "nn <- NaiveBayes(label ~ .,data = trainset)"
-    str2 = "acc <- getAcc(testset$label,predict$class)"
+    str = "nn <- naiveBayes(label ~ .,data = trainset)"
+    str2 = "acc <- getAcc(testset$label,predict)"
+  }else if(model=="SVM"){
+    str = "nn <- svm(label ~ ., data = trainset)"
+    str2 = "acc <- getAcc(testset$label,predict)"
   }else{
     stop("参数model只能取值NN,NB..")
   }
@@ -201,7 +205,7 @@ removeWF<-function(data,label,remainNum=2,model="NN"){
   cl <- makeCluster(cl.cores)
   clusterEvalQ(cl,library(caret))
   clusterEvalQ(cl,library(nnet))
-  clusterEvalQ(cl,library(klaR))
+  clusterEvalQ(cl,library(e1071))
   #-----------------------------------------------------------------
   while(len>1&&ncol(data1)>1){ #如果没有终止，一直迭代到剩下remainNum个特征
     accs<-parSapply(cl,1:ncol(data1),function(x){
@@ -280,7 +284,7 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN"){
   cl <- makeCluster(cl.cores)
   clusterEvalQ(cl,library(caret))
   clusterEvalQ(cl,library(nnet))
-  clusterEvalQ(cl,library(klaR))
+  clusterEvalQ(cl,library(e1071))
   genelist<-as.character(first)
   acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
   for(i in 1:length(genelist)){
