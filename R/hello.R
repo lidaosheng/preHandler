@@ -88,7 +88,7 @@ moduleDetect<-function(eset,dissTOM){
 #返回训练好的moxing（实际是最后一折的）,以及十折交叉验证准确率
 trainModel<-function(eset,label,model="NN"){
   if(model=="NN"){
-    str = "nn <- nnet(label ~ .,data = trainset,size = 2)"
+    str = "nn <- nnet(label ~ .,data = trainset,size = 2,,rang = 0.1,decay = 5e-4,maxit = 300,trace=F)"
     #,rang = 0.1,decay = 5e-4,maxit = 200,trace=F
     str2 = "acc <- getAcc(testset$label,predict)"
   }else if(model=="NB"){
