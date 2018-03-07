@@ -9,5 +9,5 @@ License: What license is it under?
 Encoding: UTF-8
 LazyData: true
 Date: 2017-06-11
-Depends: RColorBrewer,CLL,minerva,tcltk,annotate,base,caret,annotate,nnet,dplyr,randomForest,parallel,WGCNA,e1071
+Depends: caret,nnet,randomForest,parallel,WGCNA,e1071
 
