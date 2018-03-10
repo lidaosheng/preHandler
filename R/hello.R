@@ -86,10 +86,9 @@ moduleDetect<-function(eset,dissTOM){
 }
 
 #返回训练好的moxing（实际是最后一折的）,以及十折交叉验证准确率
-trainModel<-function(eset,label,model="NN"){
+trainModel<-function(eset,label,model="NN",maxit=250){
   if(model=="NN"){
-    str = "nn <- nnet(label ~ .,data = trainset,size = 2)"
-    #,rang = 0.1,decay = 5e-4,maxit = 200,trace=F
+    str = "nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = maxit,trace=F)"
     str2 = "acc <- getAcc(testset$label,predict)"
   }else if(model=="NB"){
     str = "nn <- naiveBayes(label ~ .,data = trainset)"
@@ -185,7 +184,7 @@ showCorPos<-function(eset,moduleColors,choose,label){
 
 #去冗余，每次去掉一个最差的特征
 #终止条件：连续下降3次，或者单次下降2百分点
-removeWF<-function(data,label,remainNum=2,model="NN"){
+removeWF<-function(data,label,remainNum=2,model="NN",maxit=250){
   #记录每次迭代次数，精度，去掉的特征
   len = ncol(data)-remainNum+1 #剩余迭代剩余次数+1
   iter = vector(mode = "integer",length = len)
@@ -196,7 +195,7 @@ removeWF<-function(data,label,remainNum=2,model="NN"){
   count = 1
   isStop = 0
   #初次没有删除元素，但是也要记录
-  acc<-trainModel(data1,as.factor(label),model) #记录初始精度
+  acc<-trainModel(data1,as.factor(label),model,maxit) #记录初始精度
   iter[1]=0
   iter_f[1]="--"
   iter_acc[1]=acc
@@ -211,7 +210,7 @@ removeWF<-function(data,label,remainNum=2,model="NN"){
     accs<-parSapply(cl,1:ncol(data1),function(x){
       # accs<-sapply(1:ncol(data1),function(x){
       data2<-data1[,-x]
-      acc_t<-trainModel(data2,as.factor(label),model)
+      acc_t<-trainModel(data2,as.factor(label),model,maxit)
     })
     #得到准确率提升最大的
     accs<-as.numeric(accs)
@@ -238,7 +237,7 @@ removeWF<-function(data,label,remainNum=2,model="NN"){
   return(result)
 }
 #eset行样本，列特征
-wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85){
+wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85,maxit=250){
   eset<-prepareData(eset,label,cor1)
   eset2<-scale(eset)#eset2是标准化的eset,仅用于聚类
   dissTOM<-1-cor(eset2)#相似矩阵化为相异矩阵，用于层次聚类
@@ -265,10 +264,10 @@ wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85){
 
   #迭代替换基因
   print("Starting replace features in genelist ...")
-  first<-replaceGene(first,colors_dec,eset,label,stop_acc,model)
+  first<-replaceGene(first,colors_dec,eset,label,stop_acc,model,maxit=maxit)
 
   print("Starting remove least contribution feature ... ")
-  result2<-removeWF(eset[,first],label,model=model)
+  result2<-removeWF(eset[,first],label,model=model,maxit=maxit)
   #用于测试目标基因在模块中的位置
   pos<-showCorPos(eset,moduleColors,result2$genelist,label)
   li <- list(result=result2,pos=pos)
@@ -279,14 +278,14 @@ wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85){
 #first 由各个colors_dec第一个元素组成的基因列表
 #colors_dec 某个模块基因降序排列（与label的cor）
 #fast
-replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN"){
+replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",maxit=250){
   cl.cores <- detectCores()
   cl <- makeCluster(cl.cores)
   clusterEvalQ(cl,library(caret))
   clusterEvalQ(cl,library(nnet))
   clusterEvalQ(cl,library(e1071))
   genelist<-as.character(first)
-  acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
+  acc<-trainModel(eset[,genelist],as.factor(label),model,maxit) #记录初始精度
   for(i in 1:length(genelist)){
     if(length(colors_dec[[i]])==1){next}
     # acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
@@ -295,7 +294,7 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN"){
       break
     accs<-parSapply(cl,colors_dec[[i]][-1],function(x){
       genelist[i]<-x
-      acc2<-trainModel(eset[,genelist],as.factor(label),model)
+      acc2<-trainModel(eset[,genelist],as.factor(label),model,maxit)
     })
     #acc提升，替换
     if(max(accs)>acc){
