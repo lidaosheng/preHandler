@@ -97,7 +97,6 @@ testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=5){
       testset<-data[x,]
       re<-wgcnaPredict(trainset[,-ncol(trainset)],trainset$label,cor1=cor1,model = "NB",k=k)
       result2<-trainModel(testset[,re$result$genelist],testset[,ncol(testset)])
-      print(paste())
       print(paste("nei bu :",re$result$acc," 外部交叉验证: ",result2,"--",dim(trainset)[1],"---",dim(testset)[1]))
       result2
     })
@@ -316,8 +315,8 @@ removeWF<-function(data,label,remainNum=2,model="NN",k=5){
   isStop = 0
   #初次没有删除元素，但是也要记录
   # acc<-trainModel(data1,as.factor(label),model) #记录初始精度
-  # acc<-trainModel3(data1,label,k)
-  acc<-trainModel5(data1,label)
+  acc<-trainModel3(data1,label,k)
+  # acc<-trainModel4(data1,label)
   iter[1]=0
   iter_f[1]="--"
   iter_acc[1]=acc
@@ -335,8 +334,8 @@ removeWF<-function(data,label,remainNum=2,model="NN",k=5){
       # accs<-sapply(1:ncol(data1),function(x){
       data2<-data1[,-x]
       # acc_t<-trainModel(data2,as.factor(label),model)
-      # acc<-trainModel3(data2,label,k)
-      acc<-trainModel5(data2,label)
+      acc<-trainModel3(data2,label,k)
+      # acc<-trainModel4(data2,label)
     })
     #得到准确率提升最大的
     accs<-as.numeric(accs)
@@ -379,7 +378,7 @@ wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85,k=5){
     cor1<-cor(x,label)
     cor1<-t(cor1)
     cor1<-as.data.frame(cor1)
-    cor1<-sort(abs(cor1),decreasing = T)
+    cor1<-sort(abs(cor1),decreasing = F)
     cor1<-colnames(cor1)
   })
   rm(colors,eset2,dissTOM,removeColors)
@@ -414,8 +413,8 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=5){
   clusterEvalQ(cl,library(clv))
   genelist<-as.character(first)
   # acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
-  # acc<-trainModel3(eset[,genelist],label,k)
-  acc<-trainModel5(eset[,genelist],label)
+  acc<-trainModel3(eset[,genelist],label,k)
+  # acc<-trainModel4(eset[,genelist],label)
   for(i in 1:length(genelist)){
     if(length(colors_dec[[i]])==1){next}
     #if the max acc bigger than end,stop the loop
@@ -424,8 +423,8 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=5){
     accs<-parSapply(cl,colors_dec[[i]][-1],function(x){
       genelist[i]<-x
       # acc2<-trainModel(eset[,genelist],as.factor(label),model)
-      # acc2<-trainModel3(eset[,genelist],label,k)
-      acc2<-trainModel5(eset[,genelist],label)
+      acc2<-trainModel3(eset[,genelist],label,k)
+      # acc2<-trainModel4(eset[,genelist],label)
 
     })
     #acc提升，替换
@@ -503,7 +502,7 @@ prepareData<-function(eset,label,cor1=0.85){
   #e_l<-removeOutliers(eset,label)
   return(eset)
 }
-mcone<-function(eset,label,cor1,fm){
+mcone<-function(eset,label,cor1=0.3,fm=1){
   corList<-abs(cor(eset,label))
   names(corList)<-colnames(eset)
   corList<-sort(corList,decreasing = T)
@@ -559,13 +558,14 @@ mcone2<-function(eset,label,cor1,fm){
   return(choose)
 }
 newone<-function(eset,label,cc){
-  cor_label<-cor(eset,label)
+  # cor_label<-cor(eset,label)
+  cor_label<-mine(eset,label)$MIC
   names(cor_label)<-colnames(eset)
   cor_label2<-sort(abs(cor_label),decreasing = T)
   cor_label2<-names(cor_label2[cc])
 }
 #十折交叉验证
-testNewOne<-function(eset,label,cc){
+testNewOne<-function(eset,label,cc,cor1,fm){
   set.seed(100)
   data<-as.data.frame(cbind(eset,label=label))
   result<-sapply(1:10,function(x){
@@ -575,9 +575,9 @@ testNewOne<-function(eset,label,cc){
       #每次先选好训练集和测试集
       trainset<-data[-x,]
       testset<-data[x,]
-      choose<-mcone(trainset[,-ncol(trainset)],trainset[,ncol(trainset)],0.3,1)
+      # choose<-mcone2(trainset[,-ncol(trainset)],trainset[,ncol(trainset)],cor1,fm)
       if(cc==0){cc=c(1:length(choose))}
-      # choose<-newone(trainset[,-ncol(trainset)],trainset[,ncol(trainset)],cc)
+      choose<-newone(trainset[,-ncol(trainset)],trainset[,ncol(trainset)],cc)
       re<-trainModel(testset[,choose],testset[,ncol(testset)])
     })
     mean(result1)
