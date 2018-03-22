@@ -85,7 +85,7 @@ moduleDetect<-function(eset,dissTOM){
   return(moduleColors)
 }
 #十折交叉验证
-testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=5){
+testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=5,type="acc"){
   set.seed(100)
   data<-as.data.frame(cbind(eset,label=label))
   result<-sapply(1:3,function(x){
@@ -95,8 +95,8 @@ testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=5){
       #每次先选好训练集和测试集
       trainset<-data[-x,]
       testset<-data[x,]
-      re<-wgcnaPredict(trainset[,-ncol(trainset)],trainset$label,cor1=cor1,model = "NB",k=k)
-      result2<-trainModel(testset[,re$result$genelist],testset[,ncol(testset)])
+      re<-wgcnaPredict(trainset[,-ncol(trainset)],trainset$label,cor1=cor1,model = "NB",k=k,type=type)
+      result2<-trainModel(testset[,re$result$genelist],testset[,ncol(testset)],type = type)
       print(paste("nei bu :",re$result$acc," 外部交叉验证: ",result2,"--",dim(trainset)[1],"---",dim(testset)[1]))
       result2
     })
@@ -104,11 +104,6 @@ testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=5){
   })
   print(result)
   return(result)
-}
-trainModel5<-function(eset,label){
-  re<-kmeans(eset,2)
-  acc<-assessCluster(as.integer(as.factor(label)),re$cluster)
-  return(acc$Rand)
 }
 trainModel4<-function(eset,label){
   # set.seed(100)
@@ -152,7 +147,7 @@ trainModel4<-function(eset,label){
   # list1<-list(result=mean(result),nn=nn)
   return(mean(result))
 }
-trainModel3<-function(eset,label,k=5){
+trainModel3<-function(eset,label,k=5,type="acc"){
   eset<- as.data.frame(eset)
   label<-as.factor(label)
   maxs<-apply(eset,2,max)
@@ -170,7 +165,7 @@ trainModel3<-function(eset,label,k=5){
     testset<-data[x,]
     predict <- knn(trainset[,-ncol(trainset)],testset[-length(testset)],trainset$label,k=k,prob=TRUE)
   })
-  acc <- getAcc(label,result1,type = "bacc")
+  acc <- getAcc(label,result1,type = type)
   return(acc)
 }
 trainModel2<-function(eset,label){
@@ -198,18 +193,14 @@ trainModel2<-function(eset,label){
   return(mean(result))
 }
 #返回训练好的moxing（实际是最后一折的）,以及十折交叉验证准确率
-trainModel<-function(eset,label,model="NN"){
+trainModel<-function(eset,label,model="NN",type="acc"){
   set.seed(100)
   if(model=="NN"){
     str = "nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 15e-4,maxit = 350,trace=F)"
-    #,rang = 0.1,decay = 5e-4,maxit = 200,trace=F
-    str2 = "acc <- getAcc(testset$label,predict)"
   }else if(model=="NB"){
     str = "nn <- naiveBayes(label ~ .,data = trainset)"
-    str2 = "acc <- getAcc(testset$label,predict)"
   }else if(model=="SVM"){
     str = "nn <- svm(label ~ ., data = trainset)"
-    str2 = "acc <- getAcc(testset$label,predict)"
   }else{
     stop("参数model只能取值NN,NB..")
   }
@@ -235,8 +226,7 @@ trainModel<-function(eset,label,model="NN"){
       # nn <- NaiveBayes(label ~ .,data = trainset)
       eval(parse(text=str))
       predict <- predict(nn,testset[,-ncol(testset)],type = "class")
-      # acc <- getAcc(testset$label,predict$class)
-      eval(parse(text=str2))
+      acc <- getAcc(testset$label,predict,type)
     })
     mean(result1)
   })
@@ -303,7 +293,7 @@ showCorPos<-function(eset,moduleColors,choose,label){
 
 #去冗余，每次去掉一个最差的特征
 #终止条件：连续下降3次，或者单次下降2百分点
-removeWF<-function(data,label,remainNum=2,model="NN",k=5){
+removeWF<-function(data,label,remainNum=2,model="NN",k=5,type="acc"){
   #记录每次迭代次数，精度，去掉的特征
   len = ncol(data)-remainNum+1 #剩余迭代剩余次数+1
   iter = vector(mode = "integer",length = len)
@@ -315,7 +305,7 @@ removeWF<-function(data,label,remainNum=2,model="NN",k=5){
   isStop = 0
   #初次没有删除元素，但是也要记录
   # acc<-trainModel(data1,as.factor(label),model) #记录初始精度
-  acc<-trainModel3(data1,label,k)
+  acc<-trainModel3(data1,label,k,type = type)
   # acc<-trainModel4(data1,label)
   iter[1]=0
   iter_f[1]="--"
@@ -334,7 +324,7 @@ removeWF<-function(data,label,remainNum=2,model="NN",k=5){
       # accs<-sapply(1:ncol(data1),function(x){
       data2<-data1[,-x]
       # acc_t<-trainModel(data2,as.factor(label),model)
-      acc<-trainModel3(data2,label,k)
+      acc<-trainModel3(data2,label,k,type = type)
       # acc<-trainModel4(data2,label)
     })
     #得到准确率提升最大的
@@ -362,7 +352,7 @@ removeWF<-function(data,label,remainNum=2,model="NN",k=5){
   return(result)
 }
 #eset行样本，列特征
-wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85,k=5){
+wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85,k=5,type="acc"){
   eset<-prepareData(eset,label,cor1)
   eset2<-scale(eset)#eset2是标准化的eset,仅用于聚类
   dissTOM<-1-cor(eset2)#相似矩阵化为相异矩阵，用于层次聚类
@@ -403,7 +393,7 @@ wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85,k=5){
 #first 由各个colors_dec第一个元素组成的基因列表
 #colors_dec 某个模块基因降序排列（与label的cor）
 #fast
-replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=5){
+replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=5,type="acc"){
   cl.cores <- detectCores()
   cl <- makeCluster(cl.cores)
   clusterEvalQ(cl,library(caret))
@@ -413,7 +403,7 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=5){
   clusterEvalQ(cl,library(clv))
   genelist<-as.character(first)
   # acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
-  acc<-trainModel3(eset[,genelist],label,k)
+  acc<-trainModel3(eset[,genelist],label,k,type = type)
   # acc<-trainModel4(eset[,genelist],label)
   for(i in 1:length(genelist)){
     if(length(colors_dec[[i]])==1){next}
@@ -423,7 +413,7 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=5){
     accs<-parSapply(cl,colors_dec[[i]][-1],function(x){
       genelist[i]<-x
       # acc2<-trainModel(eset[,genelist],as.factor(label),model)
-      acc2<-trainModel3(eset[,genelist],label,k)
+      acc2<-trainModel3(eset[,genelist],label,k,type=type)
       # acc2<-trainModel4(eset[,genelist],label)
 
     })
@@ -530,6 +520,25 @@ mcone<-function(eset,label,cor1=0.3,fm=1){
   return(choose)
 }
 #=======================================================================
+mcone3<-function(eset,label,r){
+  micFC<-mine(eset,label)$MIC
+  names(micFC)<-colnames(eset)
+  choose<-micFC[which(micFC>=r)]
+  Subset<-sort(choose,decreasing=T)
+  Subset<-names(Subset)
+  Subset<-match(Subset,colnames(eset))
+  for(e in 1:length(Subset)){
+    q=e+1
+    while(q<=length(Subset)){
+      if(mine(eset[,Subset[e]],eset[,Subset[q]])>micFC[Subset[q]])
+        Subset<-Subset[-q]
+      else
+        q=q+1
+    }
+    e=e+1
+  }
+  return(colnames(eset)[Subset])
+}
 mcone2<-function(eset,label,cor1,fm){
   corList<-mine(eset,label)$MIC
   names(corList)<-colnames(eset)
