@@ -92,7 +92,7 @@ moduleDetect<-function(eset,dissTOM,MEDissThres=0.25){
   return(moduleColors)
 }
 #十折交叉验证
-testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=1,MEDissThres=0.25){
+testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=1,MEDissThres=0.25,type="bacc"){
   set.seed(100)
   result_NB<-vector(length = 10,mode = "numeric")
   result_KNN<-vector(length = 10,mode = "numeric")
@@ -106,11 +106,10 @@ testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=1,MEDissThres=0.25){
       trainlabel<-label[-x]
       testlabel<-label[x]
       re<-wgcnaPredict(trainset,trainlabel,cor1=cor1,model = "NB",k=k,MEDissThres=MEDissThres)
-      result2<-trainModel(testset[,re],testlabel)
-      # result2_1<-trainModel(testset[,re],testlabel,model="SVM")
-      result2_2<-trainModel3(testset[,re],testlabel,k=k)
+      result2<-trainModel(testset[,re],testlabel,type=type)
+      result2_2<-trainModel3(testset[,re],testlabel,k=k,type=type)
       print(paste(" 外部交叉验证NN: ",result2,"---KNN---",result2_2))
-      result2
+      result2_2
     })
     mean(result1)
   })
@@ -118,7 +117,7 @@ testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=1,MEDissThres=0.25){
   return(result)
 }
 
-trainModel3<-function(eset,label,k=1){
+trainModel3<-function(eset,label,k=1,type="bacc"){
   result1<-sapply(1:nrow(eset),function(x){
     #每次先选好训练集和测试集
     trainset<-eset[-x,]
@@ -131,111 +130,18 @@ trainModel3<-function(eset,label,k=1){
   result1<-as.character(result1)
   label<-factor(label,levels = c("0","1"))
   result1<-factor(result1,levels = c("0","1"))
-  acc <- getAcc(result1,label,type = "bacc")
+  acc <- getAcc(result1,label,type = type)
   return(acc)
 }
 
 #返回训练好的moxing（实际是最后一折的）,以及十折交叉验证准确率
-# trainModel<-function(eset,label,model="NB",k=1){
-#   if(model=="NN"){
-#     str = "nn <- nnet(label ~ .,data = as.data.frame(cbind(trainset,label=trainlabel)),size = 2,rang = 0.1,decay = 5e-4,maxit = 350,trace=F)"
-#   }else if(model=="NB"){
-#     str = "nn <- naiveBayes(label ~ .,data = as.data.frame(cbind(trainset,label=trainlabel)))"
-#   }else if(model=="SVM"){
-#     str = "nn <- svm(label ~ ., data = as.data.frame(cbind(trainset,label=trainlabel)))"
-#   }else if(model=="KNN"){
-#     acc<-trainModel3(eset,label,k=k)
-#     return(acc)
-#   }else{
-#     stop("参数model只能取值NN,NB,KNN..")
-#   }
-#   # set.seed(100)
-#   label<-as.character(label)
-#   #十次
-#   result<-sapply(1:10,function(x){
-#     #十折交叉
-#     folds<-createFolds(y=label,k=5)
-#     result1<-sapply(folds,function(x){
-#       #每次先选好训练集和测试集
-#       trainset<-eset[-x,]
-#       testset<-eset[x,]
-#       trainlabel<-label[-x]
-#       testlabel<-label[x]
-#       #训练网络
-#       eval(parse(text=str))
-#       if(length(testlabel)==1){
-#         testset<-t(as.data.frame(eset[x,]))
-#       }
-#       predicts <- predict(nn,testset,type = "class")
-#       label2<-factor(testlabel,levels = c("0","1"))
-#       predicts<-factor(predicts,levels = c("0","1"))
-#
-#       cc <- getAcc(predicts,label2)
-#     })
-#     mean(result1)
-#   })
-#   print("十次十折交叉验证：")
-#   print(paste("---",mean(result)))
-#   # list1<-list(result=mean(result),nn=nn)
-#   return(mean(result))
-# }
-#返回训练好的moxing（实际是最后一折的）,以及十折交叉验证准确率
-# trainModel<-function(eset,label,model="NB",k=1){
-#   if(model=="NN"){
-#     str = "nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 5e-4,maxit = 350,trace=F)"
-#   }else if(model=="NB"){
-#     str = "nn <- naiveBayes(label ~ .,data = trainset)"
-#   }else if(model=="SVM"){
-#     str = "nn <- svm(label ~ ., data = trainset)"
-#   }else if(model=="KNN"){
-#     acc<-trainModel3(eset,label,k=k)
-#     return(acc)
-#   }else{
-#     stop("参数model只能取值NN,NB,KNN..")
-#   }
-#   # set.seed(100)
-#   eset<-as.data.frame(eset)
-#   label<-factor(label,levels = c("0","1"))
-#   data<-cbind(eset,label)
-#   #十次
-#   result<-sapply(1:10,function(x){
-#     #十折交叉
-#     folds<-createFolds(y=label,k=5)
-#     result1<-sapply(folds,function(x){
-#       #每次先选好训练集和测试集
-#       trainset<-data[-x,]
-#       testset<-data[x,]
-#       # trainlabel<-label[-x]
-#       # testlabel<-label[x]
-#       #训练网络
-#       eval(parse(text=str))
-#       if(length(x)==1){
-#         testset<-t(as.data.frame(testset))
-#       }
-#       predicts <- predict(nn,testset[,-ncol(testset)],type = "class")
-#       predicts<-factor(predicts,levels = c("0","1"))
-#
-#       cc <- getAcc(predicts,testset[,ncol(testset)])
-#     })
-#     mean(result1)
-#   })
-#   print("十次十折交叉验证：")
-#   print(paste("---",mean(result)))
-#   # list1<-list(result=mean(result),nn=nn)
-#   return(mean(result))
-# }
-#返回训练好的moxing（实际是最后一折的）,以及十折交叉验证准确率
-trainModel<-function(eset,label,model="NN"){
+trainModel<-function(eset,label,model="NN",type="bacc"){
   if(model=="NN"){
     str = "nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 15e-4,maxit = 350,trace=F)"
-    #,rang = 0.1,decay = 5e-4,maxit = 200,trace=F
-    str2 = "acc <- getAcc(testset$label,predict)"
   }else if(model=="NB"){
     str = "nn <- naiveBayes(label ~ .,data = trainset)"
-    str2 = "acc <- getAcc(testset$label,predict)"
   }else if(model=="SVM"){
     str = "nn <- svm(label ~ ., data = trainset)"
-    str2 = "acc <- getAcc(testset$label,predict)"
   }else{
     stop("参数model只能取值NN,NB..")
   }
@@ -257,9 +163,9 @@ trainModel<-function(eset,label,model="NN"){
       eval(parse(text=str))
       predicts <- predict(nn,testset[,-ncol(testset)],type = "class")
       predicts<-factor(predicts,levels=c("0","1"))
-      acc <- getAcc(predicts,testset$label)
+      acc <- getAcc(predicts,testset$label,type=type)
     })
-    mean(result1)
+    mean(result1,na.rm = T)
   })
   print("十次十折交叉验证：")
   print(paste("dim(eset,label)----",dim(eset)[1],"---",mean(result)))
@@ -267,7 +173,7 @@ trainModel<-function(eset,label,model="NN"){
   return(mean(result))
 }
 #二分类，获取acc
-getAcc<-function(predict,label,type="acc"){
+getAcc<-function(predict,label,type="bacc"){
   nt <- table(predict,label)
   result<-confusionMatrix(nt)
   if(type=="acc")
@@ -278,7 +184,7 @@ getAcc<-function(predict,label,type="acc"){
 
 #去冗余，每次去掉一个最差的特征
 #终止条件：连续下降3次，或者单次下降2百分点
-removeWF<-function(data,label,remainNum=2,model="NN",k=5){
+removeWF<-function(data,label,remainNum=2,model="NN",k=1,type="bacc"){
   #记录每次迭代次数，精度，去掉的特征
   len = ncol(data)-remainNum+1 #剩余迭代剩余次数+1
   iter = vector(mode = "integer",length = len)
@@ -289,9 +195,7 @@ removeWF<-function(data,label,remainNum=2,model="NN",k=5){
   count = 1
   isStop = 0
   #初次没有删除元素，但是也要记录
-  # acc<-trainModel(data1,as.factor(label),model) #记录初始精度
   acc<-trainModel3(data1,label,k)
-  #acc<-trainModel4(data1,label)
   iter[1]=0
   iter_f[1]="--"
   iter_acc[1]=acc
@@ -306,11 +210,8 @@ removeWF<-function(data,label,remainNum=2,model="NN",k=5){
   #-----------------------------------------------------------------
   while(len>1&&ncol(data1)>1){ #如果没有终止，一直迭代到剩下remainNum个特征
     accs<-parSapply(cl,1:ncol(data1),function(x){
-      # accs<-sapply(1:ncol(data1),function(x){
       data2<-data1[,-x]
-      # acc_t<-trainModel(data2,as.factor(label),model)
       acc<-trainModel3(data2,label,k)
-      #acc<-trainModel4(data2,label)
     })
     #得到准确率提升最大的
     accs<-as.numeric(accs)
@@ -337,7 +238,7 @@ removeWF<-function(data,label,remainNum=2,model="NN",k=5){
   return(result)
 }
 #eset行样本，列特征
-wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85,k=5,MEDissThres=0.25){
+wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85,k=1,MEDissThres=0.25){
   eset<-prepareData(eset,label,cor1)
   eset2<-scale(eset)#eset2是标准化的eset,仅用于聚类
   dissTOM<-1-cor(eset2)#相似矩阵化为相异矩阵，用于层次聚类
@@ -378,7 +279,7 @@ wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85,k=5,MEDissThre
 #first 由各个colors_dec第一个元素组成的基因列表
 #colors_dec 某个模块基因降序排列（与label的cor）
 #fast
-replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=5){
+replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=1){
   cl.cores <- detectCores()
   cl <- makeCluster(cl.cores)
   clusterEvalQ(cl,library(caret))
@@ -387,16 +288,13 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=5){
   clusterEvalQ(cl,library(class))
   clusterExport(cl,c("trainModel3","removeWF","replaceGene","getAcc"))
   genelist<-as.character(first)
-  # acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
   acc<-trainModel3(eset[,genelist],label,k)
   for(i in 1:length(genelist)){
     if(length(colors_dec[[i]])==1){next}
-    #if the max acc bigger than end,stop the loop
     if(acc>=end)
       break
     accs<-parSapply(cl,colors_dec[[i]][-1],function(x){
       genelist[i]<-x
-      # acc2<-trainModel(eset[,genelist],as.factor(label),model)
       acc2<-trainModel3(eset[,genelist],label,k)
     })
     #acc提升，替换
