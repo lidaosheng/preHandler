@@ -92,10 +92,8 @@ moduleDetect<-function(eset,dissTOM,MEDissThres=0.25){
   return(moduleColors)
 }
 #十折交叉验证
-testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=1,MEDissThres=0.25,type="bacc"){
+testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=1,MEDissThres=0.25,type="acc"){
   set.seed(100)
-  result_NB<-vector(length = 10,mode = "numeric")
-  result_KNN<-vector(length = 10,mode = "numeric")
   result<-sapply(1:10,function(x){
     #十折交叉
     folds<-createFolds(y=label,k=4)
@@ -108,8 +106,9 @@ testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=1,MEDissThres=0.25,typ
       re<-wgcnaPredict(trainset,trainlabel,cor1=cor1,model = "NB",k=k,MEDissThres=MEDissThres)
       result2<-trainModel(testset[,re],testlabel,type=type)
       result2_2<-trainModel3(testset[,re],testlabel,k=k,type=type)
-      print(paste(" 外部交叉验证NN: ",result2,"---KNN---",result2_2))
-      result2_2
+      result2_3<-trainModel3(testset[,re],testlabel,k=k)
+      print(paste(" 外部交叉验证NN: ",result2,"---KNN---",result2_2,"----KNNbacc---",result2_3))
+      result2
     })
     mean(result1)
   })
@@ -118,6 +117,7 @@ testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=1,MEDissThres=0.25,typ
 }
 
 trainModel3<-function(eset,label,k=1,type="bacc"){
+  set.seed(100)
   result1<-sapply(1:nrow(eset),function(x){
     #每次先选好训练集和测试集
     trainset<-eset[-x,]
@@ -135,9 +135,11 @@ trainModel3<-function(eset,label,k=1,type="bacc"){
 }
 
 #返回训练好的moxing（实际是最后一折的）,以及十折交叉验证准确率
-trainModel<-function(eset,label,model="NN",type="bacc"){
+trainModel<-function(eset,label,model="NN",type="acc"){
+  set.seed(100)
   if(model=="NN"){
     str = "nn <- nnet(label ~ .,data = trainset,size = 2,rang = 0.1,decay = 15e-4,maxit = 350,trace=F)"
+    #,rang = 0.1,decay = 5e-4,maxit = 200,trace=F
   }else if(model=="NB"){
     str = "nn <- naiveBayes(label ~ .,data = trainset)"
   }else if(model=="SVM"){
@@ -165,7 +167,7 @@ trainModel<-function(eset,label,model="NN",type="bacc"){
       predicts<-factor(predicts,levels=c("0","1"))
       acc <- getAcc(predicts,testset$label,type=type)
     })
-    mean(result1,na.rm = T)
+    mean(result1,na.rm=T)
   })
   print("十次十折交叉验证：")
   print(paste("dim(eset,label)----",dim(eset)[1],"---",mean(result)))
@@ -173,7 +175,7 @@ trainModel<-function(eset,label,model="NN",type="bacc"){
   return(mean(result))
 }
 #二分类，获取acc
-getAcc<-function(predict,label,type="bacc"){
+getAcc<-function(predict,label,type="acc"){
   nt <- table(predict,label)
   result<-confusionMatrix(nt)
   if(type=="acc")
@@ -184,7 +186,7 @@ getAcc<-function(predict,label,type="bacc"){
 
 #去冗余，每次去掉一个最差的特征
 #终止条件：连续下降3次，或者单次下降2百分点
-removeWF<-function(data,label,remainNum=2,model="NN",k=1,type="bacc"){
+removeWF<-function(data,label,remainNum=2,model="NN",k=1){
   #记录每次迭代次数，精度，去掉的特征
   len = ncol(data)-remainNum+1 #剩余迭代剩余次数+1
   iter = vector(mode = "integer",length = len)
@@ -195,7 +197,9 @@ removeWF<-function(data,label,remainNum=2,model="NN",k=1,type="bacc"){
   count = 1
   isStop = 0
   #初次没有删除元素，但是也要记录
+  # acc<-trainModel(data1,as.factor(label),model) #记录初始精度
   acc<-trainModel3(data1,label,k)
+  #acc<-trainModel4(data1,label)
   iter[1]=0
   iter_f[1]="--"
   iter_acc[1]=acc
@@ -210,8 +214,11 @@ removeWF<-function(data,label,remainNum=2,model="NN",k=1,type="bacc"){
   #-----------------------------------------------------------------
   while(len>1&&ncol(data1)>1){ #如果没有终止，一直迭代到剩下remainNum个特征
     accs<-parSapply(cl,1:ncol(data1),function(x){
+      # accs<-sapply(1:ncol(data1),function(x){
       data2<-data1[,-x]
+      # acc_t<-trainModel(data2,as.factor(label),model)
       acc<-trainModel3(data2,label,k)
+      #acc<-trainModel4(data2,label)
     })
     #得到准确率提升最大的
     accs<-as.numeric(accs)
@@ -288,13 +295,16 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=1){
   clusterEvalQ(cl,library(class))
   clusterExport(cl,c("trainModel3","removeWF","replaceGene","getAcc"))
   genelist<-as.character(first)
+  # acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
   acc<-trainModel3(eset[,genelist],label,k)
   for(i in 1:length(genelist)){
     if(length(colors_dec[[i]])==1){next}
+    #if the max acc bigger than end,stop the loop
     if(acc>=end)
       break
     accs<-parSapply(cl,colors_dec[[i]][-1],function(x){
       genelist[i]<-x
+      # acc2<-trainModel(eset[,genelist],as.factor(label),model)
       acc2<-trainModel3(eset[,genelist],label,k)
     })
     #acc提升，替换
