@@ -84,7 +84,7 @@ moduleDetect<-function(eset,dissTOM,MEDissThres=0.25){
   dynamicColors = labels2colors(dynamicMods)
   # MEDissThres<-0.25
   # Call an automatic merging function
-  merge = mergeCloseModules(eset, dynamicColors, cutHeight = MEDissThres, verbose = 3)
+  merge = mergeCloseModules(eset, dynamicColors, cutHeight = MEDissThres, verbose = 0)
   # The merged module colors
   mergedColors = merge$colors;
   # Rename to moduleColors
@@ -92,18 +92,18 @@ moduleDetect<-function(eset,dissTOM,MEDissThres=0.25){
   return(moduleColors)
 }
 #十折交叉验证
-testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=1,MEDissThres=0.25,type="acc"){
+testbioPicker<-function(eset,label,model="SVM",cor1=0.85,k=1,MEDissThres=0.25,type="acc"){
   set.seed(100)
   result<-sapply(1:10,function(x){
     #十折交叉
-    folds<-createFolds(y=label,k=4)
+    folds<-createFolds(y=label,k=5)
     result1<-sapply(folds,function(x){
       #每次先选好训练集和测试集
       trainset<-eset[-x,]
       testset<-eset[x,]
       trainlabel<-label[-x]
       testlabel<-label[x]
-      re<-wgcnaPredict(trainset,trainlabel,cor1=cor1,model = "NB",k=k,MEDissThres=MEDissThres)
+      re<-wgcnaPredict(trainset,trainlabel,cor1=cor1,k=k,MEDissThres=MEDissThres)
       result2<-trainModel(testset[,re],testlabel,type=type)
       result2_2<-trainModel3(testset[,re],testlabel,k=k,type=type)
       result2_3<-trainModel3(testset[,re],testlabel,k=k)
@@ -186,7 +186,7 @@ getAcc<-function(predict,label,type="acc"){
 
 #去冗余，每次去掉一个最差的特征
 #终止条件：连续下降3次，或者单次下降2百分点
-removeWF<-function(data,label,remainNum=2,model="NN",k=1){
+removeWF<-function(data,label,remainNum=2,k=1){
   #记录每次迭代次数，精度，去掉的特征
   len = ncol(data)-remainNum+1 #剩余迭代剩余次数+1
   iter = vector(mode = "integer",length = len)
@@ -245,7 +245,7 @@ removeWF<-function(data,label,remainNum=2,model="NN",k=1){
   return(result)
 }
 #eset行样本，列特征
-wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85,k=1,MEDissThres=0.25){
+wgcnaPredict<-function(eset,label,stop_acc=1,cor1=0.85,k=1,MEDissThres=0.25){
   eset<-prepareData(eset,label,cor1)
   eset2<-scale(eset)#eset2是标准化的eset,仅用于聚类
   dissTOM<-1-cor(eset2)#相似矩阵化为相异矩阵，用于层次聚类
@@ -272,10 +272,10 @@ wgcnaPredict<-function(eset,label,stop_acc=1,model="NN",cor1=0.85,k=1,MEDissThre
 
   #迭代替换基因
   print("Starting replace features in genelist ...")
-  first<-replaceGene(first,colors_dec,eset,label,stop_acc,model,k=k)
+  first<-replaceGene(first,colors_dec,eset,label,stop_acc,k=k)
 
   #print("Starting remove least contribution feature ... ")
-  #result2<-removeWF(eset[,first],label,model=model,k=k)
+  #result2<-removeWF(eset[,first],label,k=k)
   #用于测试目标基因在模块中的位置
   #pos<-showCorPos(eset,moduleColors,result2$genelist,label)
   #li <- list(result=result2,pos=pos)
