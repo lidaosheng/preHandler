@@ -92,7 +92,7 @@ moduleDetect<-function(eset,dissTOM,MEDissThres=0.25){
   return(moduleColors)
 }
 #十折交叉验证
-testbioPicker<-function(eset,label,model="SVM",cor1=0.85,k=1,MEDissThres=0.25,type="acc"){
+testbioPicker<-function(eset,label,model="NB",cor1=0.85,k=1,MEDissThres=0.25,type="acc"){
   set.seed(100)
   result<-sapply(1:10,function(x){
     #十折交叉
@@ -107,13 +107,13 @@ testbioPicker<-function(eset,label,model="SVM",cor1=0.85,k=1,MEDissThres=0.25,ty
       result2<-trainModel(testset[,re],testlabel,type=type)
       result2_2<-trainModel3(testset[,re],testlabel,k=k,type=type)
       result2_3<-trainModel3(testset[,re],testlabel,k=k)
-      print(paste(" 外部交叉验证NN: ",result2,"---KNN---",result2_2,"----KNNbacc---",result2_3))
+      # print(paste(" 外部交叉验证NN: ",result2,"---KNN---",result2_2,"----KNNbacc---",result2_3))
       result2
     })
     mean(result1)
   })
-  print(result)
-  return(result)
+  # print(result)
+  return(mean(result))
 }
 
 trainModel3<-function(eset,label,k=1,type="bacc"){
@@ -154,9 +154,9 @@ trainModel<-function(eset,label,model="NN",type="acc"){
   #十次
   #-----------------------------------------------------
   #----------------------------------------------------
-  result<-sapply(1:5,function(x){
+  result<-sapply(1:10,function(x){
     #十折交叉
-    folds<-createFolds(y=data$label,k=10)
+    folds<-createFolds(y=data$label,k=5)
     result1<-sapply(folds,function(x){
       #每次先选好训练集和测试集
       trainset<-data[-x,]
@@ -169,8 +169,8 @@ trainModel<-function(eset,label,model="NN",type="acc"){
     })
     mean(result1,na.rm=T)
   })
-  print("十次十折交叉验证：")
-  print(paste("dim(eset,label)----",dim(eset)[1],"---",mean(result)))
+  # print("十次十折交叉验证：")
+  # print(paste("dim(eset,label)----",dim(eset)[1],"---",mean(result)))
   # list1<-list(result=mean(result),nn=nn)
   return(mean(result))
 }
@@ -186,7 +186,7 @@ getAcc<-function(predict,label,type="acc"){
 
 #去冗余，每次去掉一个最差的特征
 #终止条件：连续下降3次，或者单次下降2百分点
-removeWF<-function(data,label,remainNum=2,k=1){
+removeWF<-function(data,label,remainNum=2,model="NN",k=1){
   #记录每次迭代次数，精度，去掉的特征
   len = ncol(data)-remainNum+1 #剩余迭代剩余次数+1
   iter = vector(mode = "integer",length = len)
@@ -271,7 +271,7 @@ wgcnaPredict<-function(eset,label,stop_acc=1,cor1=0.85,k=1,MEDissThres=0.25){
   first<-unlist(first)
 
   #迭代替换基因
-  print("Starting replace features in genelist ...")
+  # print("Starting replace features in genelist ...")
   first<-replaceGene(first,colors_dec,eset,label,stop_acc,k=k)
 
   #print("Starting remove least contribution feature ... ")
@@ -286,7 +286,7 @@ wgcnaPredict<-function(eset,label,stop_acc=1,cor1=0.85,k=1,MEDissThres=0.25){
 #first 由各个colors_dec第一个元素组成的基因列表
 #colors_dec 某个模块基因降序排列（与label的cor）
 #fast
-replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=1){
+replaceGene<-function(first,colors_dec,eset,label,end=1,k=1){
   cl.cores <- detectCores()
   cl <- makeCluster(cl.cores)
   clusterEvalQ(cl,library(caret))
@@ -295,7 +295,6 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=1){
   clusterEvalQ(cl,library(class))
   clusterExport(cl,c("trainModel3","removeWF","replaceGene","getAcc"))
   genelist<-as.character(first)
-  # acc<-trainModel(eset[,genelist],as.factor(label),model) #记录初始精度
   acc<-trainModel3(eset[,genelist],label,k)
   for(i in 1:length(genelist)){
     if(length(colors_dec[[i]])==1){next}
@@ -304,7 +303,6 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=1){
       break
     accs<-parSapply(cl,colors_dec[[i]][-1],function(x){
       genelist[i]<-x
-      # acc2<-trainModel(eset[,genelist],as.factor(label),model)
       acc2<-trainModel3(eset[,genelist],label,k)
     })
     #acc提升，替换
@@ -324,7 +322,7 @@ replaceGene<-function(first,colors_dec,eset,label,end=1,model="NN",k=1){
 #label为样本标签，integer格式
 prepareData<-function(eset,label,cor1=0.85){
   #去掉缺失值--------------------------------------------------------------
-  print("Removing feature with missing value...")
+  # print("Removing feature with missing value...")
   if(length(is.na(eset))>0){
     missIndex<-apply(eset,2,function(x){length(which(is.na(x)))>0})
     missIndex<-as.integer(which(missIndex))
@@ -333,7 +331,7 @@ prepareData<-function(eset,label,cor1=0.85){
   }
 
   #去掉零方差------ --------------------------------------------------------
-  print("Removing features with zero variance...")
+  # print("Removing features with zero variance...")
   eset_p<-scale(eset)
   zerovar<-nearZeroVar(eset_p)
   if(length(zerovar)>0)
